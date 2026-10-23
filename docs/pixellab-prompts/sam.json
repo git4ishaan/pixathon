@@ -1,0 +1,36 @@
+{
+  "group_id": "74607e02-ab91-4356-a85e-1818d82dc93e",
+  "states": [
+    {
+      "character": {
+        "id": "63188b76-c112-46c5-a64b-8aaa5a380c01",
+        "name": "Idle",
+        "prompt": "Sam: baseball cap, scraped knees\nCute child ghost in a party hat, translucent pale blue glow, simple 1980s clothes, sad but gentle smile, small and soft, floating slightly above the ground, no frightening features, ghostly sparkle edges",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-23T11:38:54.445216+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-23T11:55:12.065828"
+}

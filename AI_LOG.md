@@ -75,3 +75,12 @@
 - Mistake caught: The first validator draft imported `CHARSET` from rules.ts but the pruned validator defines its own candidates array, leaving `CHARSET` unused — a compile error under `noUnusedLocals`. Caught by `tsc --noEmit` and fixed by removing the stale import.
 - Branch `mitansh` pushed; PR: https://github.com/git4ishaan/pixathon/pull/new/mitansh
 
+## Asset Organization: PixelLab Sprite Ingestion
+- Prompt: Find every image file and prompt file from PixelLab sprite downloads, list with dimensions and categories, organize into public/assets/ (mascots, kids, props, unsorted) and docs/pixellab-prompts/, rename to lowercase with clear naming and animation/direction suffixes, print tree and unidentified files, and commit without altering src/.
+- Tool: Antigravity.
+- Result: Extracted and organized 15 sprite sets into structured directories with zero src/ modifications. Created 104 verified PNG assets across `public/assets/mascots/` (Chime, Biscuit, Pip with 8 rotations each), `public/assets/kids/` (Mia, Theo, Ana, Dev, Lila, Sam, and Player with 8 rotations each), `public/assets/props/` (party-table, poster, elevator), and `public/assets/unsorted/` (arcade-cabinet, tall-man). Preserved all original prompts and metadata JSON in `docs/pixellab-prompts/`.
+- What needed correcting:
+  1. The downloads were still present as compressed `.zip` archives in the root directory rather than extracted files. Extracted all archives using byte-safe buffer handling to preserve PNG integrity before moving and organizing.
+  2. The downloads included directional rotation frames (8 directions for characters). Standardized the primary south/front-facing frame as the base sprite (e.g. `chime.png`) while retaining all 8 directional frames with descriptive suffixes (e.g. `chime-south.png`, `chime-north.png`, etc.).
+  3. Identified 2 files not belonging to the 8 clue props or characters (`Old_pixel_arcade_cabinet_dust.zip` and `Tall_man_in_a_long.zip`) and safely routed them to `public/assets/unsorted/` as `arcade-cabinet.png` and `tall-man.png`.
+

@@ -1,0 +1,22 @@
+{
+  "group_id": "1b10f2ba-d7b9-41e5-8fb0-845aa6be877c",
+  "objects": [
+    {
+      "id": "b50f5259-0379-492b-a174-0d392de0959c",
+      "name": "base",
+      "prompt": "Faded MISSING poster with a child's drawing, torn corners",
+      "size": {
+        "width": 48,
+        "height": 48
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/Faded_MISSING_poster_with_a_ch.png"
+      },
+      "animations": {}
+    }
+  ],
+  "export_version": "1.1",
+  "export_date": "2026-10-23T12:00:17.232966"
+}

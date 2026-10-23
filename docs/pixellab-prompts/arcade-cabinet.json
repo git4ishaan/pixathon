@@ -1,0 +1,22 @@
+{
+  "group_id": "e503110e-a90c-4ccf-98dc-284da8119dc3",
+  "objects": [
+    {
+      "id": "6968c18f-3782-4d5e-bcb4-876d59bccd23",
+      "name": "base",
+      "prompt": "Old pixel arcade cabinet, dusty, flickering screen",
+      "size": {
+        "width": 48,
+        "height": 48
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/Old_pixel_arcade_cabinet_dust.png"
+      },
+      "animations": {}
+    }
+  ],
+  "export_version": "1.1",
+  "export_date": "2026-10-23T11:45:46.543960"
+}

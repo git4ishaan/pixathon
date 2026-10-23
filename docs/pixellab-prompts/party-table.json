@@ -1,0 +1,22 @@
+{
+  "group_id": "443ebe01-1649-4256-aa3e-1fe34f254443",
+  "objects": [
+    {
+      "id": "32e7f0a4-4955-484d-b6e2-e50d4b4d1a05",
+      "name": "base",
+      "prompt": "Pile of paper party hats and a half-eaten birthday cake on a table",
+      "size": {
+        "width": 48,
+        "height": 48
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/Pile_of_paper_party_hats_and_a.png"
+      },
+      "animations": {}
+    }
+  ],
+  "export_version": "1.1",
+  "export_date": "2026-10-23T11:57:43.231035"
+}

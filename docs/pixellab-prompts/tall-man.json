@@ -1,0 +1,36 @@
+{
+  "group_id": "d64235ed-40c8-4ee9-b1fa-27c0d350672f",
+  "states": [
+    {
+      "character": {
+        "id": "e9333c77-e46f-40ea-8520-f28a328b336d",
+        "name": "Idle",
+        "prompt": "Tall man in a long 1980s suit and tie, dark silhouette with no visible face, standing still, mysterious, only a faint outline of a smile",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-23T11:49:12.321884+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-23T12:01:48.223731"
+}

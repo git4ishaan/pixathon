@@ -1,0 +1,36 @@
+{
+  "group_id": "d620266f-cc64-4cc6-9b38-93b1f399ceac",
+  "states": [
+    {
+      "character": {
+        "id": "96481877-54b7-4856-900f-785e8af29708",
+        "name": "Idle",
+        "prompt": "Ana: curly hair with a ribbon, overalls.Cute child ghost in a party hat, translucent pale blue glow, simple 1980s clothes, sad but gentle smile, small and soft, floating slightly above the ground, no frightening features, ghostly sparkle edges",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-23T11:32:50.343564+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-23T11:37:22.489878"
+}
