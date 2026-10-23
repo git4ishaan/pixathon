@@ -79,3 +79,10 @@
 - Prompt: Build the keypad + live checklist as a standalone `src/keypad.ts` (6-slot display, 0-9/A-Z/#*! buttons, backspace, enter, physical keyboard, demo-only note, `setRules`), without touching RoomScene.
 - Tool: Claude Code (Sonnet 5.5), on branch `keypad-ui`, requested by Aarush's Claude session.
 - Result: Added `Keypad` container, 280×475, 7-column key grid. First typecheck failed: a `type()` method collided with `Container.type`, and `scene.add.existing(this)` needed a cast. Renamed to `typeChar` and fixed. Typecheck and build pass. Not yet checked visually in a browser; that needs RoomScene to mount it.
+
+## Numeric keypad, deploy workflow, sfx
+- Prompt: Rework the keypad for the revised PRD (numeric, submit-only feedback), add a GitHub Pages deploy workflow, add Web Audio sfx.
+- Tool: Claude Code (Sonnet 5.5), branch `keypad-numeric` from `origin/tier1`.
+- Result: `src/keypad.ts` is now a 3x4 digit grid plus a full-width SUBMIT, 6 slots, DEL/CLR, 52px-tall keys. `setResult` shows per-clue pass/fail only after submit, and `setLocked`/`reset` cover end states and restart. `.github/workflows/deploy.yml` builds with bun and publishes `dist` on push to `main`. `src/audio/sfx.ts` has five tones and respects mute via `scene.sound.mute`.
+- Mistake caught: in my first draft of `setResult` I left a stray empty text object (created then immediately destroyed) from an abandoned layout idea. Caught on re-reading the diff before committing; removed. Separately, the peer message said bun was not installed here; it is (1.4.4 under `~/.bun/bin`), and `bun install --frozen-lockfile` was confirmed locally because the workflow depends on it.
+- Not verified: the 44 CSS px key size on a real phone (needs FIT scale >= ~0.85, so landscape phone), and the workflow has never run on GitHub.
