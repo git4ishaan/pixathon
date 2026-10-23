@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE, reducedMotion } from '../config';
+import { chimeBell, scareSting, winJingle, wrongBuzz } from '../audio/sfx';
 import { advanceChime, initChime, isClueLocked, TIMER_STEPS_MS } from '../game/chime';
 import { createPuzzle, freshSeed, submitCode } from '../game/rules';
+import { CLUE_IDS } from '../game/types';
 import type { ChimeState, ClueId, ClueInstance, PatrolPoint, Puzzle } from '../game/types';
 import { Keypad } from '../keypad';
 import { addMuteToggle } from '../ui';
@@ -24,6 +26,13 @@ const PATROL: readonly PatrolPoint[] = ['office', 'corridor', 'lift-lobby'];
 
 // The ?seed= link applies to the first run only; restarts get a fresh seed.
 let urlSeedUsed = false;
+
+declare global {
+  interface Window {
+    /** Dev server only: brute-forces a passing code for the active puzzle. Never present in production builds. */
+    liftDevSolve?: () => string | null;
+  }
+}
 
 interface SceneData {
   seed?: string;
@@ -88,6 +97,7 @@ export class RoomScene extends Phaser.Scene {
     this.mountKeypad();
     addMuteToggle(this, GAME_WIDTH - 8, 6);
     this.refreshChime();
+    if (import.meta.env.DEV) window.liftDevSolve = () => this.devSolve();
 
     const onEsc = (): void => {
       if (this.logPanel) this.closeLog();
@@ -101,6 +111,7 @@ export class RoomScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-L', onLog);
       this.keypad?.destroy();
       this.keypad = undefined;
+      if (import.meta.env.DEV) delete window.liftDevSolve;
     });
   }
 
@@ -394,6 +405,7 @@ export class RoomScene extends Phaser.Scene {
       this.finish('caught');
       return;
     }
+    chimeBell(this);
     this.showBanner(`Chime moves to the ${AREA_LABEL[this.chimeState.point].toLowerCase()}.`);
   }
 
@@ -426,6 +438,7 @@ export class RoomScene extends Phaser.Scene {
     }
     this.remainingMs = Math.max(0, this.remainingMs - WRONG_CODE_PENALTY_MS);
     this.timerText.setText(this.formatTime(this.remainingMs));
+    wrongBuzz(this);
     this.showBanner('Wrong code. -10 seconds.');
     this.moveChime('wrong-code');
   }
@@ -441,6 +454,7 @@ export class RoomScene extends Phaser.Scene {
     this.pulse?.stop();
     const data = { outcome: outcome === 'win' ? 'win' : 'lose', seed: this.seed };
     if (outcome === 'win') {
+      winJingle(this);
       this.time.delayedCall(400, () => this.scene.start('EndScene', data));
       return;
     }
@@ -449,6 +463,7 @@ export class RoomScene extends Phaser.Scene {
 
   /** At most one second, a single red flash (never faster than 3 per second), calm when reduced motion is on. */
   private playJumpscare(done: () => void): void {
+    scareSting(this);
     const calm = reducedMotion();
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
@@ -469,6 +484,16 @@ export class RoomScene extends Phaser.Scene {
       this.cameras.main.shake(350, 0.01);
     }
     this.time.delayedCall(JUMPSCARE_MS, done);
+  }
+
+  /** Dev only: tries every six-digit code through submitCode and returns the one that passes. */
+  private devSolve(): string | null {
+    const all = new Set<ClueId>(CLUE_IDS);
+    for (let n = 0; n < 1_000_000; n++) {
+      const attempt = n.toString().padStart(6, '0');
+      if (submitCode(this.puzzle, attempt, all).pass) return attempt;
+    }
+    return null;
   }
 
   private formatTime(ms: number): string {

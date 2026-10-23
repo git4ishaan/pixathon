@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE } from '../config';
+import { dailySeed } from '../game/rules';
 import { addMuteToggle } from '../ui';
 
 const FONT = 'Courier New, monospace';
@@ -56,6 +57,24 @@ export class TitleScene extends Phaser.Scene {
     });
     button.on('pointerup', () => this.scene.start('RoomScene'));
     this.input.keyboard?.on('keydown-ENTER', () => this.scene.start('RoomScene'));
+
+    const dailyX = buttonX + 250 + 16;
+    const daily = this.add.rectangle(dailyX, buttonY, 210, 52, PALETTE.ink)
+      .setOrigin(0)
+      .setStrokeStyle(2, PALETTE.muted)
+      .setInteractive({ useHandCursor: true });
+    const dailyText = this.add.text(dailyX + 18, buttonY + 17, 'DAILY SEED  ›', {
+      color: '#f5e8c8', fontFamily: FONT, fontSize: '17px', fontStyle: 'bold',
+    });
+    daily.on('pointerover', () => {
+      daily.setFillStyle(PALETTE.paper);
+      dailyText.setColor('#17131f');
+    });
+    daily.on('pointerout', () => {
+      daily.setFillStyle(PALETTE.ink);
+      dailyText.setColor('#f5e8c8');
+    });
+    daily.on('pointerup', () => this.scene.start('RoomScene', { seed: dailySeed() }));
 
     this.add.text(84, 472, 'CONTAINS A JUMPSCARE', {
       color: '#c64a4a', fontFamily: FONT, fontSize: '14px', fontStyle: 'bold', letterSpacing: 1,
