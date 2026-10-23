@@ -23,3 +23,9 @@
 - Tool: Codex image inspection and `apply_patch`.
 - Result: Moved the attached pixel-art scene into `public/assets/` and loaded it as the title background using Vite's base URL so it works in local and subpath deployments. Phaser pixel-art mode keeps the image crisp.
 - Mistake caught: The first typecheck found that Vite client types were not declared in the new scaffold. Added Vite's standard client type reference so the base URL is typed correctly.
+
+## Tier 1 room blockout
+- Prompt: Work step by step on room design and keep the log useful for resuming after context limits.
+- Tool: Codex with `apply_patch`.
+- Result: Added `ROOM_BLOCKOUT.md` for one 960×540 room with a 64px goal/timer header, 680px clue area, 280px control rail, and the party table as the first pulsing clue. RoomScene implementation remains with its designated owner.
+- Next: Lock clue IDs/text to the PRD, then agree on exact object positions and click target sizes before the driver implements the scene.
