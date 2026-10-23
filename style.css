@@ -1,0 +1,153 @@
+/* ===== Design tokens: the Artist edits ONLY these to restyle the game ===== */
+:root {
+  --bg: #f6f1e7;
+  --surface: #fffaf0;
+  --ink: #1b2a5c;
+  --muted: #5b6690;
+  --accent: #d3a335;
+  --wall: #1b2a5c;
+  --floor: #e9e1cf;
+  --goal: #d3a335;
+  --player: #2f4bb5;
+  --radius: 4px;
+  --shadow: 4px 4px 0 var(--ink);
+  --font: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --cell: min(9vw, 56px);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  display: grid;
+  place-items: center;
+}
+
+#app { width: min(100%, 560px); padding: 16px; }
+
+.screen { display: none; text-align: center; }
+.screen.active { display: block; }
+
+h1 { font-size: clamp(2rem, 8vw, 3rem); margin: 0 0 8px; }
+h2 { margin: 0 0 16px; }
+.tagline { color: var(--muted); margin: 0 0 24px; }
+
+.stack { display: grid; gap: 10px; max-width: 260px; margin: 0 auto; }
+
+button {
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--accent);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px 16px;
+  cursor: pointer;
+}
+button:hover { transform: translate(-1px, -1px); }
+button:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+button:focus-visible { outline: 3px solid var(--player); outline-offset: 2px; }
+button.ghost { background: var(--surface); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Level select */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.level-tile { padding: 12px 6px; }
+.level-tile.locked { background: var(--floor); color: var(--muted); }
+.level-tile small { display: block; font-weight: 400; margin-top: 4px; }
+
+/* HUD */
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.hud-info { display: grid; text-align: center; font-size: 0.95rem; }
+.hud-actions { display: flex; gap: 6px; }
+.hud button { padding: 6px 10px; font-size: 0.85rem; }
+
+/* Board */
+.board {
+  display: grid;
+  gap: 2px;
+  justify-content: center;
+  margin: 0 auto 12px;
+  padding: 6px;
+  background: var(--ink);
+  width: fit-content;
+  border-radius: var(--radius);
+}
+.cell {
+  width: var(--cell);
+  height: var(--cell);
+  background: var(--floor);
+  display: grid;
+  place-items: center;
+}
+.cell.wall { background: var(--wall); }
+.cell.goal { background: var(--goal); }
+.cell.player::after {
+  content: "";
+  width: 62%;
+  height: 62%;
+  background: var(--player);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  transition: transform 80ms;
+}
+.cell.bump { animation: bump 140ms; }
+@keyframes bump {
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+.hint-text { min-height: 1.4em; color: var(--muted); margin: 0 0 8px; }
+
+/* D-pad for touch */
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-areas: ". up ." "left down right";
+  gap: 8px;
+  justify-content: center;
+}
+.dpad [data-dir="up"] { grid-area: up; }
+.dpad [data-dir="left"] { grid-area: left; }
+.dpad [data-dir="down"] { grid-area: down; }
+.dpad [data-dir="right"] { grid-area: right; }
+.dpad button { padding: 10px 0; }
+
+/* Overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(27, 42, 92, 0.55);
+}
+.overlay.hidden { display: none; }
+.card {
+  background: var(--surface);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  width: min(90vw, 340px);
+}
+
+.how { text-align: left; max-width: 400px; margin: 0 auto 20px; line-height: 1.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
