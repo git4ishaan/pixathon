@@ -150,3 +150,10 @@
 - Tool: Claude Code (Sonnet 5.5), headless Chrome screenshot check.
 - Result: BootScene loads the props, Chime sprite and six audio files; props scale to the largest whole number that fits their hotspot; Chime scales from his 64px sprite; ambient loop, creak on every Chime step, radio static on the radio clue, jumpscare file on a loss, and Mitansh's SoundManager blips for keys, clues and wrong codes (gated on the mute toggle).
 - Mistake caught: merging Mitansh's sfx rewrite into main replaced the named sfx exports that RoomScene imported, so main failed typecheck and would have failed its deploy; found by running tsc right after the pull, fixed by moving RoomScene to the new `sfx` object.
+
+## Aarush: generated pixel art for the missing props and the room
+- Prompt: Generate pixel art for the rooms Ishaan has not made yet.
+- Tool: Claude Code (Sonnet 5.5) writing a Python/Pillow generator (`scripts/gen_art.py`); no image model was available, so everything is drawn pixel by pixel in code with the game palette.
+- Result: `prop-wall-calendar`, `prop-radio`, `prop-ticket-stub`, `prop-plaque` (48x48, each with a `-glow` halo variant) and `room-bg` (170x119, shown at 4x): lobby with ceiling lamps, wainscot, checkered floor and a closed lift. BootScene picks them up from `public/assets` with no code change. Checked in headless Chrome at 960x540: all eight props render and hotspots line up, no console errors.
+- Mistake caught: the first room-bg draw wrote translucent light cones straight onto an opaque image, which replaces pixels instead of blending them; viewing an upscaled contact sheet before wiring it in showed the problem and the lamp light now goes through an overlay layer and `alpha_composite`.
+- Not done: no glow variants for Ishaan's four props, and the lift-door animation overlay still needs retuning to the lift alcove (around x 528-664, y 160-348).
