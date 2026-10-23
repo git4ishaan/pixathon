@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE } from '../config';
+import { addMuteToggle } from '../ui';
 
 export class RoomScene extends Phaser.Scene {
   constructor() {
@@ -25,5 +26,6 @@ export class RoomScene extends Phaser.Scene {
       fontFamily: 'Courier New, monospace',
       fontSize: '16px',
     }).setOrigin(0.5);
+    addMuteToggle(this, GAME_WIDTH - 28, 20);
   }
 }
