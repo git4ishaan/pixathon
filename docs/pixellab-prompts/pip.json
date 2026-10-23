@@ -1,0 +1,36 @@
+{
+  "group_id": "a7f14ec0-4694-45fc-9b50-34f10d8f2ca5",
+  "states": [
+    {
+      "character": {
+        "id": "f9bc0a56-077e-45fb-80df-d15592a10116",
+        "name": "Idle",
+        "prompt": "Creepy animatronic ringmaster parrot mascot, tall faded red circus coat with gold trim and a battered top hat, peeling green and red feathers, one cracked glass eye glowing orange and one empty socket, large chipped beak that opens too far, clawed metal feet, holding a bent cane, standing on a prize-counter stand, haunted and unsettling16-bit pixel art, dark horror palette, limited colors, clean 1px outline, no background, front-facing, 64x64",
+        "size": {
+          "width": 64,
+          "height": 64
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-23T11:11:35.578710+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-23T11:25:17.001491"
+}

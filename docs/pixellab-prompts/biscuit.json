@@ -1,0 +1,36 @@
+{
+  "group_id": "c1a27eac-2cf8-47ce-a809-a740c9146c33",
+  "states": [
+    {
+      "character": {
+        "id": "5b1a9bc9-edfb-498e-abab-7a2dfdef4fc6",
+        "name": "Idle",
+        "prompt": "Creepy animatronic baker bear mascot, round heavy body, stained white chef hat and apron with flour handprints, matted brown fur worn through to metal in patches, cracked plastic muzzle, glowing pale blue eyes, a too-wide mouth with a hinged jaw, holding a rusty rolling pin, statue-like pose, abandoned and haunted.16-bit pixel art, dark horror palette, limited colors, clean 1px outline, no background, front-facing, 64x64",
+        "size": {
+          "width": 64,
+          "height": 64
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-23T10:56:52.678613+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-23T11:25:38.147250"
+}

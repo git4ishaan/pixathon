@@ -1,0 +1,22 @@
+{
+  "group_id": "f54f380a-06f6-4fd8-be87-a49cec8c95c4",
+  "objects": [
+    {
+      "id": "73e112b6-56df-42ec-ac0f-5ebc7fe2a30f",
+      "name": "base",
+      "prompt": "Brass elevator door with a glowing keypad and two worn buttons",
+      "size": {
+        "width": 96,
+        "height": 96
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/Brass_elevator_door_with_a_glo.png"
+      },
+      "animations": {}
+    }
+  ],
+  "export_version": "1.1",
+  "export_date": "2026-10-23T11:49:50.405307"
+}
