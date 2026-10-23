@@ -29,3 +29,9 @@
 - Tool: Codex with `apply_patch`.
 - Result: Added `ROOM_BLOCKOUT.md` for one 960×540 room with a 64px goal/timer header, 680px clue area, 280px control rail, and the party table as the first pulsing clue. RoomScene implementation remains with its designated owner.
 - Next: Lock clue IDs/text to the PRD, then agree on exact object positions and click target sizes before the driver implements the scene.
+
+## Room clue coordinates
+- Prompt: Determine the eight clue positions carefully before generating the room.
+- Tool: Codex planning and `apply_patch`.
+- Result: Replaced rough placement notes in `ROOM_BLOCKOUT.md` with exact centers and 120×132 logical touch targets. Four wall clues occupy an evenly spaced row; party table, ticket stub, lobby statues, and lift panel form a separated foreground row. Props stay in the 680px room view, clear of the right control rail and top HUD. Background art will contain architecture only; clues remain separate sprites.
+- Next: Generate the room architecture around these reserved positions, then integrate sprites and hotspots.
