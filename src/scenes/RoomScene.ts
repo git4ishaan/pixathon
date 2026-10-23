@@ -198,7 +198,7 @@ export class RoomScene extends Phaser.Scene {
 
     // Room view and control rail backdrops (Soham's background art replaces the room view).
     if (this.textures.exists('room-bg')) {
-      this.add.image(0, HEADER_HEIGHT, 'room-bg').setOrigin(0).setScale(4).setDepth(0);
+      this.add.image(0, HEADER_HEIGHT, 'room-bg').setOrigin(0).setDisplaySize(ROOM_W, ROOM_H).setDepth(0);
     } else {
       // No room art yet: reuse the menu art, dimmed, instead of a flat blue fill.
       const art = roomBackdrop(this, 0, HEADER_HEIGHT, ROOM_W, ROOM_H);

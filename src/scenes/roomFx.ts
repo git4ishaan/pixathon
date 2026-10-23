@@ -8,8 +8,6 @@ export const ROOM_Y = 40;
 export const ROOM_W = 960;
 export const ROOM_H = 464;
 
-/** Where the lift doors sit in the room. Matches the art once room-bg lands. */
-const LIFT_DOORS = { x: 886, y: 200, w: 107, h: 132 };
 
 const WALK_MS = 1200;
 const BOB_MS = 220;
@@ -25,9 +23,9 @@ interface Spot {
 }
 
 const SPOTS: Readonly<Record<PatrolPoint, Spot>> = {
-  office: { x: 247, y: 259, scale: 2, alpha: 0.55 },
-  corridor: { x: 677, y: 285, scale: 3, alpha: 0.8 },
-  'lift-lobby': { x: 886, y: 314, scale: 4, alpha: 1 },
+  office: { x: 247, y: 221, scale: 2, alpha: 0.55 },
+  corridor: { x: 677, y: 243, scale: 3, alpha: 0.8 },
+  'lift-lobby': { x: 886, y: 266, scale: 4, alpha: 1 },
 };
 
 type Body = Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
@@ -184,20 +182,49 @@ export class Atmosphere {
   }
 }
 
-/** Two brass doors slide apart over the lift, then onDone. Skips the slide under reduced motion. */
+/**
+ * The lift is the brass-doored alcove painted into room-bg (art x 132-166, y 24-71; room-bg is stretched to the 960x464 room, so 5.65x wide and 3.9x tall).
+ * The doors are two panels, a seam apart, so the overlay matches them panel for panel.
+ */
+const LIFT_DOORS = { x: 841, y: 225, w: 192, h: 183 };
+const DOOR_BRASS = 0x5c4828;
+const DOOR_SHINE = 0x78603a;
+
+function doorPanel(scene: Phaser.Scene, cx: number, cy: number, w: number, h: number): Phaser.GameObjects.Container {
+  const panel = scene.add.rectangle(0, 0, w, h, DOOR_BRASS).setStrokeStyle(2, PALETTE.ink);
+  const shineA = scene.add.rectangle(-w * 0.2, 0, 4, h - 24, DOOR_SHINE);
+  const shineB = scene.add.rectangle(w * 0.2, 0, 4, h - 24, DOOR_SHINE);
+  return scene.add.container(cx, cy, [panel, shineA, shineB]).setDepth(9);
+}
+
+/**
+ * Win moment: warm light fills the alcove, the two doors slide apart into the frame, and a pool of
+ * light spills onto the floor, then onDone. One slow fade, never a flash. Reduced motion jumps to the
+ * open state.
+ */
 export function openLiftDoors(scene: Phaser.Scene, onDone: () => void): void {
   const { x, y, w, h } = LIFT_DOORS;
-  const half = w / 2;
-  scene.add.rectangle(x, y, w, h, PALETTE.paper).setDepth(8);
-  const left = scene.add.rectangle(x - half / 2, y, half, h, 0x8a6f2f).setStrokeStyle(2, PALETTE.ink).setDepth(9);
-  const right = scene.add.rectangle(x + half / 2, y, half, h, 0x8a6f2f).setStrokeStyle(2, PALETTE.ink).setDepth(9);
-  if (reducedMotion()) {
+  const half = w / 2 - 2;
+  const calm = reducedMotion();
+
+  const interior = scene.add.rectangle(x, y, w, h, 0xf2d58f).setDepth(8).setAlpha(calm ? 1 : 0);
+  // inner glow: a brighter core inside the lit alcove
+  const core = scene.add.rectangle(x, y, w * 0.5, h * 0.85, 0xfff4d8).setDepth(8).setAlpha(calm ? 0.8 : 0);
+  const spill = scene.add.rectangle(x, y + h / 2 + 26, w * 0.9, 44, PALETTE.lamp).setDepth(7).setAlpha(calm ? 0.28 : 0);
+  const left = doorPanel(scene, x - half / 2 - 1, y, half, h);
+  const right = doorPanel(scene, x + half / 2 + 1, y, half, h);
+
+  if (calm) {
     left.setVisible(false);
     right.setVisible(false);
     scene.time.delayedCall(500, onDone);
     return;
   }
-  scene.tweens.add({ targets: left, x: x - half * 1.5, scaleX: 0.1, duration: 800, ease: 'Sine.easeInOut' });
-  scene.tweens.add({ targets: right, x: x + half * 1.5, scaleX: 0.1, duration: 800, ease: 'Sine.easeInOut' });
-  scene.time.delayedCall(1200, onDone);
+
+  scene.tweens.add({ targets: [interior, core], alpha: { from: 0, to: 1 }, duration: 350 });
+  scene.tweens.add({ targets: spill, alpha: 0.28, duration: 900, delay: 500 });
+  // each panel slips behind its own frame edge: it slides outward while squeezing flat
+  scene.tweens.add({ targets: left, x: x - w / 2 - 4, scaleX: 0.08, duration: 900, delay: 350, ease: 'Cubic.easeInOut' });
+  scene.tweens.add({ targets: right, x: x + w / 2 + 4, scaleX: 0.08, duration: 900, delay: 350, ease: 'Cubic.easeInOut' });
+  scene.time.delayedCall(2200, onDone);
 }
