@@ -46,3 +46,14 @@
 - Prompt: Include the user and Codex in the work split.
 - Tool: Codex planning.
 - Result: Soham owns visual direction, creates/revises the room background from `ROOM_BLOCKOUT.md`, and gives final art/playability feedback. Codex owns integration support across the separate workstreams, code review, and build/validator checks; Codex does not create replacement room artwork.
+
+## Aarush: RoomScene shell
+- Prompt: Start on features that do not depend on Mitansh's rules/clues; split work with a parallel agent.
+- Tool: Claude Code (Sonnet 5.5). Peer session pixathon-97 was assigned `src/keypad.ts` (keypad + checklist UI) via SendMessage.
+- Result: `RoomScene.ts` now has the header (goal line, 3:00 countdown, mute), room view and control rail zones, 8 stub hotspots at the ROOM_BLOCKOUT.md positions, pulse on the party table until first click, found state, clue popup (click or Esc to close), and a placeholder time-up overlay with restart. Hotspot data is a local stub until `src/data/clues.ts` lands.
+- Note: `bun` is not installed on this machine, so typecheck was run with `node node_modules/typescript/bin/tsc --noEmit` (passes).
+
+## Keypad UI component
+- Prompt: Build the keypad + live checklist as a standalone `src/keypad.ts` (6-slot display, 0-9/A-Z/#*! buttons, backspace, enter, physical keyboard, demo-only note, `setRules`), without touching RoomScene.
+- Tool: Claude Code (Sonnet 5.5), on branch `keypad-ui`, requested by Aarush's Claude session.
+- Result: Added `Keypad` container, 280×475, 7-column key grid. First typecheck failed: a `type()` method collided with `Container.type`, and `scene.add.existing(this)` needed a cast. Renamed to `typeChar` and fixed. Typecheck and build pass. Not yet checked visually in a browser; that needs RoomScene to mount it.
