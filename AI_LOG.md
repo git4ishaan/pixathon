@@ -114,3 +114,11 @@
 - Result: `chimeBell` on every Chime step, `wrongBuzz` on a wrong code, `winJingle` on win, `scareSting` on the jumpscare. Title screen has a DAILY SEED button using `dailySeed()`. Win path verified: `window.liftDevSolve` (set only under `import.meta.env.DEV`; the production build contains no trace of it) brute-forces a passing code through `submitCode`, typed in, and the end screen showed THE LIFT OPENS with the proof panel (1,000,000 candidates, 1 solution).
 - Mistake caught: an earlier reading of "no console errors" on a room screen was really a stale dev-server crash from another agent's debug counters in `rules.ts`; the screenshot sequence ending on the title screen was a Vite full reload mid-run, not a game bug. Both were only found by looking at the screenshots instead of trusting the empty problems list.
 - Not done: `keyClick` (the keypad has no key callback and keypad.ts is not mine), phone-width check, real-device audio check.
+
+## Headless-Chrome playtest of room-loop (Claude Code, branch qa-room-loop)
+- Prompt: Playtest a full round in a browser (puppeteer-core driving installed Chrome, 1280x720, time-warped clock), fix room-loop bugs, wire Web Audio cues.
+- Result: Win, wrong code (-10 s, Chime step), caught + jumpscare (900 ms, one dim, no flashing) and Try again (fresh seed) all work with a clean console on seeds LASTLIFT, MIA-1987, VALE.
+- Mistake caught by the playtest: a wrong code at 0:53 moved Chime two steps (office to lift lobby). The 10 s penalty reduced `remainingMs`, and timer steps were derived from `TIME_LIMIT_MS - remainingMs`, so the penalty also crossed the 60 s timer step. Fixed with a separate `elapsedMs`.
+- Other fixes: the "Wrong code" banner was overwritten by the Chime banner in the same frame (now one message); SUBMIT with fewer than 6 digits did nothing (empty slots now flash red); keypad slot outline was clipped under the header bar; keys raised to 62 px; sfx wired for key click, wrong buzz, Chime bell, win and scare sting.
+- Test artifact, not a bug: typing six digits in one frame (puppeteer `keyboard.type` with no delay) garbles the code because Phaser queues key events per frame. Delay >= 20 ms is fine; a human cannot type that fast.
+- Not run: real phone, portrait layout, audible check of the sfx (headless).
