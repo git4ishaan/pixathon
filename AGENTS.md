@@ -11,7 +11,7 @@ Rules for every AI agent working in this repo (Antigravity, Claude Code, Codex C
 
 ## Stack
 - TypeScript (strict), Phaser 3.90, Vite 7. Node 22.
-- Commands: `npm install`, `npm run dev` (http://localhost:5173), `npm run typecheck`, `npm run validate`, `npm run build`.
+- Runtime and package manager: Bun. Commands: `bun install`, `bun run dev` (http://localhost:5173), `bun run typecheck`, `bun run validate`, `bun run build`.
 - Do not upgrade Phaser or Vite. Do not add new dependencies without a strong reason. Do not write a custom engine.
 - No `any`. Fix type errors instead of silencing them.
 
@@ -33,7 +33,7 @@ scripts/validate.ts    brute-forces all codes; must report exactly one valid pas
 - Each rule in `rules.ts` has `{ id, clueId, text, check(code), prefixOk? }`. `clueId` must match a clue in `clues.ts`.
 - A rule appears on the keypad checklist only after its clue is found, and shows pass or fail live.
 - The elevator opens only when ALL rules pass.
-- After ANY change to rules or clues, run `npm run validate`. It must print `PASS: exactly one valid passcode.`
+- After ANY change to rules or clues, run `bun run validate`. It must print `PASS: exactly one valid passcode.`
 
 ## Content rules
 - Original characters only: Chime (bellhop bunny), Biscuit (baker bear), Pip (ringmaster parrot). **Do not use Five Nights at Freddy's names, sprites, music or text.**
@@ -47,7 +47,7 @@ scripts/validate.ts    brute-forces all codes; must report exactly one valid pas
 - Pixel-art mode is on. Keep sprites crisp: integer scales, no smoothing, one palette defined in `config.ts`.
 
 ## Quality bar
-- `npm run typecheck`, `npm run validate` and `npm run build` must pass before every merge.
+- `bun run typecheck`, `bun run validate` and `bun run build` must pass before every merge.
 - No console errors. Test in the browser before saying a task is done.
 - A first-time player understands the game without help: goal line, pulsing first object, visible timer.
 - Works on phone and laptop. Restart works without reloading.

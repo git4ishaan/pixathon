@@ -6,7 +6,7 @@
 ## 0. Tech stack
 - **Language:** TypeScript (strict).
 - **Engine:** Phaser 3.90 (2D, pixel-art mode, scenes, tweens, input). We use an existing engine instead of writing one: the judges score the game and the AI use, not the engine.
-- **Build:** Vite. `npm run dev`, `npm run build`, `npm run validate`.
+- **Runtime/package manager:** Bun. **Build:** Vite. `bun install`, `bun run dev`, `bun run build`, `bun run validate`.
 - **Structure:** `src/game/rules.ts` (pure logic, no Phaser), `src/scenes/*` (Boot, Title, Room, End), `src/data/*` (clues, lore), `src/audio/sfx.ts` (Web Audio), `scripts/validate.ts` (proves one valid passcode).
 - **Deploy:** GitHub Actions builds and publishes to GitHub Pages on every push to `main`.
 
@@ -26,7 +26,7 @@ Between attempts, short 8-bit lore scenes reveal what happened to the six childr
 | Original, not a clone of a famous password game | A deduction escape room with lore. The password is found in the world, not typed against rules |
 
 ## 3. Judging map (100 points)
-- **Smart use of AI (40):** keep AI_LOG.md current. Run `npm run validate` to prove one valid passcode. Record one real AI mistake.
+- **Smart use of AI (40):** keep AI_LOG.md current. Run `bun run validate` to prove one valid passcode. Record one real AI mistake.
 - **Creativity and originality (20):** password-as-escape-room plus lore minigames tied to the clues.
 - **Usability (15):** goal line, first clue highlighted, visible timer, no instructions needed.
 - **Feel and design (10):** pixel art, ambient audio, Chime's 3 approach stages, jumpscare.
