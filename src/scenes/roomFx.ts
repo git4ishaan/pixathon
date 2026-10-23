@@ -43,6 +43,8 @@ function chimeKey(scene: Phaser.Scene, frame: number): string | null {
 export class ChimeSprite {
   private readonly body: Body;
   private readonly scene: Phaser.Scene;
+  /** Spot scales are tuned for 16x28 art; larger sprites (Ishaan's 64px Chime) scale down to match. */
+  private readonly unit: number;
   private frame = 0;
   private bob?: Phaser.Time.TimerEvent;
 
@@ -50,18 +52,19 @@ export class ChimeSprite {
     this.scene = scene;
     const spot = SPOTS[point];
     const key = chimeKey(scene, 0);
+    this.unit = key && scene.textures.get(key).getSourceImage().height > 40 ? 0.5 : 1;
     if (key) {
       this.body = scene.add.image(spot.x, spot.y, key);
     } else {
       this.body = scene.add.rectangle(spot.x, spot.y, 16, 28, 0xb08d3c).setStrokeStyle(1, PALETTE.ink);
     }
-    this.body.setOrigin(0.5, 1).setScale(spot.scale).setAlpha(spot.alpha).setDepth(CHIME_DEPTH);
+    this.body.setOrigin(0.5, 1).setScale(spot.scale * this.unit).setAlpha(spot.alpha).setDepth(CHIME_DEPTH);
   }
 
   moveTo(point: PatrolPoint): void {
     const spot = SPOTS[point];
     if (reducedMotion()) {
-      this.body.setPosition(spot.x, spot.y).setScale(spot.scale).setAlpha(spot.alpha);
+      this.body.setPosition(spot.x, spot.y).setScale(spot.scale * this.unit).setAlpha(spot.alpha);
       return;
     }
     this.startBob();
@@ -69,7 +72,7 @@ export class ChimeSprite {
       targets: this.body,
       x: spot.x,
       y: spot.y,
-      scale: spot.scale,
+      scale: spot.scale * this.unit,
       alpha: spot.alpha,
       duration: WALK_MS,
       ease: 'Sine.easeInOut',

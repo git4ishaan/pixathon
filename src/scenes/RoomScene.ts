@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { chimeBell, keyClick, scareSting, winJingle, wrongBuzz } from '../audio/sfx';
+import { sfx } from '../audio/sfx';
 import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE, reducedMotion } from '../config';
 import { advanceChime, initChime, isClueLocked, TIMER_STEPS_MS } from '../game/chime';
 import { createPuzzle, freshSeed, submitCode } from '../game/rules';
@@ -111,6 +111,7 @@ export class RoomScene extends Phaser.Scene {
     this.drawEvidenceStrip();
     this.mountKeypad();
     addMuteToggle(this, GAME_WIDTH - 8, 6);
+    this.startAmbient();
     this.refreshChime();
     if (import.meta.env.DEV) window.liftDevSolve = () => this.devSolve();
 
@@ -192,7 +193,7 @@ export class RoomScene extends Phaser.Scene {
   private mountKeypad(): void {
     const keypad = new Keypad(this, RAIL_X, HEADER_HEIGHT);
     keypad.onSubmit((code: string): void => this.onSubmit(code));
-    keypad.onPress((): void => keyClick(this));
+    keypad.onPress((): void => this.blip(() => sfx.playClick()));
     this.keypad = keypad;
   }
 
@@ -210,9 +211,10 @@ export class RoomScene extends Phaser.Scene {
       let glow: Phaser.GameObjects.Image | undefined;
       let label: Phaser.GameObjects.Text | undefined;
       if (art) {
-        prop = this.add.image(clue.x, clue.y, propKey).setScale(4).setDepth(1);
+        const fit = this.fitScale(propKey, clue);
+        prop = this.add.image(clue.x, clue.y, propKey).setScale(fit).setDepth(1);
         if (this.textures.exists(`${propKey}-glow`)) {
-          glow = this.add.image(clue.x, clue.y, `${propKey}-glow`).setScale(4).setDepth(1.5).setAlpha(0);
+          glow = this.add.image(clue.x, clue.y, `${propKey}-glow`).setScale(fit).setDepth(1.5).setAlpha(0);
         }
       } else {
         box.setStrokeStyle(2, PALETTE.muted);
@@ -331,7 +333,8 @@ export class RoomScene extends Phaser.Scene {
       return;
     }
     this.stopPulse();
-    keyClick(this);
+    this.blip(() => sfx.playClueFound());
+    if (clue.id === 'radio') this.play('snd-radio', 0.5);
     this.nudge(clue.id);
     if (!this.found.has(clue.id)) {
       this.found.add(clue.id);
@@ -498,7 +501,7 @@ export class RoomScene extends Phaser.Scene {
       this.finish('caught');
       return;
     }
-    chimeBell(this);
+    this.playCreak();
     this.chimeSprite?.moveTo(this.chimeState.point);
     this.atmosphere?.setStage(this.chimeState.step);
     const moved = `Chime moves to the ${AREA_LABEL[this.chimeState.point].toLowerCase()}.`;
@@ -534,7 +537,7 @@ export class RoomScene extends Phaser.Scene {
     }
     this.remainingMs = Math.max(0, this.remainingMs - WRONG_CODE_PENALTY_MS);
     this.timerText.setText(this.formatTime(this.remainingMs));
-    wrongBuzz(this);
+    this.blip(() => sfx.playError());
     this.moveChime('wrong-code');
   }
 
@@ -549,7 +552,7 @@ export class RoomScene extends Phaser.Scene {
     this.pulse?.stop();
     const data = { outcome: outcome === 'win' ? 'win' : 'lose', seed: this.seed };
     if (outcome === 'win') {
-      winJingle(this);
+      this.blip(() => sfx.playClueFound());
       openLiftDoors(this, () => this.scene.start('EndScene', data));
       return;
     }
@@ -558,7 +561,7 @@ export class RoomScene extends Phaser.Scene {
 
   /** At most one second, a single red flash (never faster than 3 per second), calm when reduced motion is on. */
   private playJumpscare(done: () => void): void {
-    scareSting(this);
+    this.play('snd-jumpscare', 0.9);
     const calm = reducedMotion();
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
@@ -589,6 +592,34 @@ export class RoomScene extends Phaser.Scene {
       if (submitCode(this.puzzle, attempt, all).pass) return attempt;
     }
     return null;
+  }
+
+  /** Largest whole-number scale at which a prop texture fits inside its hotspot. */
+  private fitScale(key: string, clue: ClueInstance): number {
+    const src = this.textures.get(key).getSourceImage();
+    return Math.max(1, Math.floor(Math.min(clue.width / src.width, clue.height / src.height)));
+  }
+
+  /** Synth blips from the sound manager honour the mute toggle (Phaser sounds do it themselves). */
+  private blip(fn: () => void): void {
+    if (!this.sound.mute) fn();
+  }
+
+  private play(key: string, volume: number): void {
+    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
+  }
+
+  private playCreak(): void {
+    const n = Phaser.Math.Between(1, 3);
+    this.play(`snd-creak${n}`, 0.7);
+    this.blip(() => sfx.playChimeStep());
+  }
+
+  private startAmbient(): void {
+    if (!this.cache.audio.exists('snd-ambient')) return;
+    const ambient = this.sound.add('snd-ambient', { loop: true, volume: 0.3 });
+    ambient.play();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => ambient.destroy());
   }
 
   private formatTime(ms: number): string {

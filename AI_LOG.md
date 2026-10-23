@@ -144,3 +144,9 @@
 - Result: new `src/scenes/roomFx.ts` (ChimeSprite, Atmosphere, openLiftDoors) and a reworked hotspot layer in `RoomScene.ts`. Uses `room-bg`, `prop-<clueId>`, `prop-<clueId>-glow`, `chime-0/chime-1` or a single `chime`, and falls back to the old boxes and a brass rectangle when a texture is missing. Flicker fires about once a second and is off under reduced motion.
 - Mistake caught: my first patch script died on a shell quoting error and, on retry, on an exact-match anchor that another agent had already changed (the sfx import) because they merged into the shared branch at the same time; the assert refused to write, so nothing was half-applied. Screenshots then showed the hover name tag overlapping the Chime banner, fixed by raising the banner depth.
 - Not yet verified with real art, since the PNGs were not in the repo when this was written; Chime's lift-door and spot coordinates in `roomFx.ts` are estimates to retune against the final room-bg.
+
+## Aarush: integrate Ishaan's art and Mitansh's audio
+- Prompt: Pull latest main and wire the finished room art, sprites and sound effects into the round loop, fast.
+- Tool: Claude Code (Sonnet 5.5), headless Chrome screenshot check.
+- Result: BootScene loads the props, Chime sprite and six audio files; props scale to the largest whole number that fits their hotspot; Chime scales from his 64px sprite; ambient loop, creak on every Chime step, radio static on the radio clue, jumpscare file on a loss, and Mitansh's SoundManager blips for keys, clues and wrong codes (gated on the mute toggle).
+- Mistake caught: merging Mitansh's sfx rewrite into main replaced the named sfx exports that RoomScene imported, so main failed typecheck and would have failed its deploy; found by running tsc right after the pull, fixed by moving RoomScene to the new `sfx` object.
