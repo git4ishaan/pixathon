@@ -19,7 +19,7 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0)
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
 
-    this.add.text(84, 96, 'POCKET PALACE  /  1987', {
+    this.add.text(84, 96, "VALE'S DEPARTMENT STORE  /  1987", {
       color: '#8e8495', fontFamily: FONT, fontSize: '14px', letterSpacing: 1,
     });
     this.add.text(78, 128, 'LAST', {

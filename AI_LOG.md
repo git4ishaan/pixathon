@@ -46,3 +46,10 @@
 - Prompt: Include the user and Codex in the work split.
 - Tool: Codex planning.
 - Result: Soham owns visual direction, creates/revises the room background from `ROOM_BLOCKOUT.md`, and gives final art/playability feedback. Codex owns integration support across the separate workstreams, code review, and build/validator checks; Codex does not create replacement room artwork.
+
+## Product critique decisions
+- Prompt: Address Aarush's design critique and update the project docs.
+- Tool: Codex with `apply_patch`.
+- Result: Reframed the setting as Vale's 1987 department store, made Chime a clockwork lift attendant, changed the puzzle spec to seeded six-digit codes and touch keypad input, made clues observation-only with explicit dependencies/red-herring resolution, required uniqueness plus per-rule necessity proofs, and added wrong-entry penalties that move Chime and affect clue access. Added honest solver-proof UI requirements, GitHub Pages shell verification, strict merge gates, Web Audio-only scope, and deferred multi-room/minigame work. Updated the goal line and title label. The current arcade-style menu background remains temporary and must be replaced by Soham's art direction.
+- Ownership update: Mitansh builds the seeded generator/rules/validator; Aarush builds the evidence UI, numeric keypad, timer, patrol, and outcomes; Ishaan makes separate department-store backgrounds and props; Soham approves and supplies the visual direction; Codex integrates/reviews and runs checks.
+- Next: Mitansh should produce one worked seed with eight necessary deductions before coding the generator; Aarush should agree on the clue-data interface with Mitansh before wiring RoomScene.
