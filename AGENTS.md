@@ -6,58 +6,61 @@ Rules for every AI agent working in this repo (Antigravity, Claude Code, Codex C
 **LAST LIFT**: a pixel escape-room puzzle for Pixathon, problem statement 2 (Puzzle Passwords). The player finds 8 clues in a room, builds a 6-character elevator passcode, and escapes before the mascot Chime reaches them. Judging: smart use of AI (40), creativity (20), usability (15), feel and design (10), pitch (10), fun (5).
 
 - **Goal line (always on screen):** Find the clues, build the elevator passcode, and escape before Chime reaches you.
-- **Passcode:** `3M5#76`. Never print it in the UI. The validator must confirm it is the only valid code.
 - **Required note on the keypad:** "Demo only. Never enter a real password."
+- **Passcode:** a spoiler stored only in `src/game/rules.ts` (`SECRET`). Never show it in the UI.
 
-## Tech rules
-- Static web app. Opens from index.html. No build step, no frameworks, no external assets or CDNs.
-- Files:
-  - `index.html`: screens and markup
-  - `style.css`: styling, colors and fonts only via CSS variables at the top
-  - `rules.js` and `rules.json`: the 8 rules and clues (data plus `check(code)` functions)
-  - `game.js`: state machine, timer, input, rendering
-  - `scenes.js`: lore scenes and the jumpscare
-  - `audio.js`: Web Audio sounds (already in repo)
-  - `validate.js`: Node script that brute-forces all codes against `rules.js` and prints how many pass
-- Replace the starter's grid `Logic` object and `levels.json`. Reuse the screen switching, `Store` (localStorage in try/catch), and `Sfx`.
-- Keep rule logic (`rules.js`) free of DOM code so `validate.js` can import it.
-- Game states: `title`, `room`, `win`, `lose`, `scene`. Only one active at a time.
-- Controls: mouse, touch and keyboard (Tab and Enter for objects, type in the keypad, R restart, M mute).
-- `fetch()` needs a local server (`python -m http.server`) or GitHub Pages.
+## Stack
+- TypeScript (strict), Phaser 3.90, Vite 7. Node 22.
+- Commands: `npm install`, `npm run dev` (http://localhost:5173), `npm run typecheck`, `npm run validate`, `npm run build`.
+- Do not upgrade Phaser or Vite. Do not add new dependencies without a strong reason. Do not write a custom engine.
+- No `any`. Fix type errors instead of silencing them.
 
-## Rule engine contract
-```js
-// rules.js
-const RULES = [
-  { id: 1, clueId: 'party-table', text: 'Has 6 characters', check: (c) => c.length === 6 },
-  // ... 8 total, each with a clueId matching an object in the room
-];
-// A rule is shown on the checklist only after its clue is found.
-// Each rule displays pass or fail live as the player types.
-// The elevator opens only if ALL 8 rules pass.
+## Structure
 ```
+src/main.ts            Phaser config and scene list
+src/config.ts          constants: size, colors, timer, text (restyle here)
+src/game/rules.ts      PURE logic: the 8 rules and evaluate(). No Phaser or DOM imports
+src/data/clues.ts      the 8 clickable objects (position, label, clue text)
+src/data/lore.ts       lore scene text
+src/scenes/            BootScene, TitleScene, RoomScene, EndScene
+src/audio/sfx.ts       Web Audio sound effects (no audio files)
+src/ui.ts              shared button and mute toggle
+src/store.ts           localStorage progress (try/catch)
+scripts/validate.ts    brute-forces all codes; must report exactly one valid passcode
+```
+
+## Rule contract
+- Each rule in `rules.ts` has `{ id, clueId, text, check(code), prefixOk? }`. `clueId` must match a clue in `clues.ts`.
+- A rule appears on the keypad checklist only after its clue is found, and shows pass or fail live.
+- The elevator opens only when ALL rules pass.
+- After ANY change to rules or clues, run `npm run validate`. It must print `PASS: exactly one valid passcode.`
 
 ## Content rules
 - Original characters only: Chime (bellhop bunny), Biscuit (baker bear), Pip (ringmaster parrot). **Do not use Five Nights at Freddy's names, sprites, music or text.**
 - Horror is implied only. Never show children being harmed. No gore, no on-screen death of children.
-- Title screen must show "Contains a jumpscare". Mute toggle must be visible on every screen.
-- Jumpscare: at most 1 second, no flashing faster than 3 times per second, respect `prefers-reduced-motion`.
+- Title screen shows "Contains a jumpscare." A mute toggle is visible on every screen.
+- Jumpscare: at most 1 second, no flashing faster than 3 times per second, respect `prefers-reduced-motion` (use `reducedMotion()` from config).
 - Never ask for or store a real password.
 
+## Art and assets
+- Placeholder art is drawn in code. Real pixel art goes in `public/assets/` and loads in `BootScene`.
+- Pixel-art mode is on. Keep sprites crisp: integer scales, no smoothing, one palette defined in `config.ts`.
+
 ## Quality bar
-- No console errors. Test in a browser before saying a task is done.
+- `npm run typecheck`, `npm run validate` and `npm run build` must pass before every merge.
+- No console errors. Test in the browser before saying a task is done.
 - A first-time player understands the game without help: goal line, pulsing first object, visible timer.
 - Works on phone and laptop. Restart works without reloading.
 
 ## Git rules
 - Commit after every working change with a clear message. Judges read the history.
-- Work on your own branch and merge into `main` only when it runs. Never leave `main` broken.
+- Work on your own branch and merge into `main` only when it builds. Never leave `main` broken. Pushes to `main` auto-deploy to GitHub Pages.
 - Never commit API keys or secrets. This repo is public.
 
 ## File ownership (avoid edit conflicts)
-- `game.js`, `index.html` logic: Driver agent (Antigravity)
-- `rules.js`, `rules.json`, `validate.js`: rule agent (Claude Code, Codex for validator review)
-- `style.css`, `audio.js`, `scenes.js`: juice agent (OpenCode and Artist)
+- `src/scenes/RoomScene.ts`, `src/main.ts`: Driver agent (Antigravity)
+- `src/game/*`, `src/data/clues.ts`, `scripts/*`: rule agent (Claude Code, Codex reviews the validator)
+- `src/scenes/EndScene.ts`, `src/scenes/TitleScene.ts`, `src/audio/*`, `src/data/lore.ts`, `public/assets/*`: juice agent (OpenCode and Artist)
 - `AI_LOG.md`, `README.md`: Bard (append only)
 
 ## Logging (worth up to 40 points)

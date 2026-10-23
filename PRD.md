@@ -3,6 +3,13 @@
 **Pixathon problem statement 2: Puzzle Passwords.**
 **Goal line (shown on screen):** Find the clues, build the elevator passcode, and escape before Chime reaches you.
 
+## 0. Tech stack
+- **Language:** TypeScript (strict).
+- **Engine:** Phaser 3.90 (2D, pixel-art mode, scenes, tweens, input). We use an existing engine instead of writing one: the judges score the game and the AI use, not the engine.
+- **Build:** Vite. `npm run dev`, `npm run build`, `npm run validate`.
+- **Structure:** `src/game/rules.ts` (pure logic, no Phaser), `src/scenes/*` (Boot, Title, Room, End), `src/data/*` (clues, lore), `src/audio/sfx.ts` (Web Audio), `scripts/validate.ts` (proves one valid passcode).
+- **Deploy:** GitHub Actions builds and publishes to GitHub Pages on every push to `main`.
+
 ## 1. Concept
 Pocket Palace, a children's arcade inside a mall, closed for good in June 1987. You are locked inside at night. The only way out is the elevator, which needs a 6-character passcode. The passcode is hidden in the room as 8 clues. A 3-minute timer runs, and a mascot robot named Chime creeps closer. If time runs out, Chime gets you.
 
@@ -11,7 +18,7 @@ Between attempts, short 8-bit lore scenes reveal what happened to the six childr
 ## 2. PS2 must-haves
 | Requirement | How we meet it |
 |---|---|
-| Runs in the browser | Static web app, no build step |
+| Runs in the browser | TypeScript + Phaser 3 game, built with Vite and deployed to GitHub Pages |
 | At least 8 rules, clues or levels | 8 clues, each mapped to one passcode rule |
 | Live feedback on which rules pass and fail | Keypad checklist ticks green or red as the player types. A rule appears once its clue is found |
 | A clear win state | Elevator opens, ending scene plays |
@@ -19,7 +26,7 @@ Between attempts, short 8-bit lore scenes reveal what happened to the six childr
 | Original, not a clone of a famous password game | A deduction escape room with lore. The password is found in the world, not typed against rules |
 
 ## 3. Judging map (100 points)
-- **Smart use of AI (40):** keep AI_LOG.md current. Use a brute-force validator to prove one valid passcode. Record one real AI mistake.
+- **Smart use of AI (40):** keep AI_LOG.md current. Run `npm run validate` to prove one valid passcode. Record one real AI mistake.
 - **Creativity and originality (20):** password-as-escape-room plus lore minigames tied to the clues.
 - **Usability (15):** goal line, first clue highlighted, visible timer, no instructions needed.
 - **Feel and design (10):** pixel art, ambient audio, Chime's 3 approach stages, jumpscare.
