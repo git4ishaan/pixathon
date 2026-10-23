@@ -46,3 +46,19 @@
 - Prompt: Include the user and Codex in the work split.
 - Tool: Codex planning.
 - Result: Soham owns visual direction, creates/revises the room background from `ROOM_BLOCKOUT.md`, and gives final art/playability feedback. Codex owns integration support across the separate workstreams, code review, and build/validator checks; Codex does not create replacement room artwork.
+
+## Mitansh — Rule engine, clue data, and validator (branch: mitansh)
+- Prompt: Analyse tasks from PRD and AI_LOG, build work into phases, create a branch `mitansh`, and start working.
+- Tool: Antigravity (read PRD.md, AI_LOG.md, ROOM_BLOCKOUT.md, all src files; wrote src/game/rules.ts, src/data/clues.ts, src/store.ts, scripts/validate.ts; updated package.json and tsconfig.json; ran typecheck and validate).
+- Result: Implemented all Mitansh-assigned files from the AI_LOG team split.
+  - `src/game/rules.ts`: 8 `Rule` objects matching PRD §6 — length, first-digit-3, second-letter-M, last-digit-6, fourth-char-#, digit-sum-21, no-repeat, flanking-5-7 — plus `evaluate()` for live keypad feedback and `prefixOk()` for partial-code highlighting. Pure TypeScript, no Phaser imports.
+  - `src/data/clues.ts`: 8 `Clue` records with exact centres from ROOM_BLOCKOUT.md (120×132 hot-spots), narrative clue text tied to each rule, and `pulse: true` on the party table.
+  - `src/store.ts`: localStorage wrapper with try/catch on every read/write; tracks `loreIndex` and `attempts`.
+  - `scripts/validate.ts`: pruned brute-force (position-fixed search) enumerates all legal 6-char codes and asserts exactly one passes all 8 rules.
+  - `package.json`: added `validate` script (`npx tsx scripts/validate.ts`).
+  - `tsconfig.json`: extended `include` to cover `scripts/`, added `@types/node` for `process.exit`.
+- Validator output: `PASS: exactly one valid passcode.` (found `3M5#76`; matches SECRET).
+- Typecheck: zero errors.
+- Mistake caught: The first validator draft imported `CHARSET` from rules.ts but the pruned validator defines its own candidates array, leaving `CHARSET` unused — a compile error under `noUnusedLocals`. Caught by `tsc --noEmit` and fixed by removing the stale import.
+- Branch `mitansh` pushed; PR: https://github.com/git4ishaan/pixathon/pull/new/mitansh
+
