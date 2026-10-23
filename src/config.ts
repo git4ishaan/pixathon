@@ -9,7 +9,7 @@ export const PALETTE = {
   muted: 0x8e8495,
 } as const;
 
-export const GOAL_LINE = 'Find the clues, build the elevator passcode, and escape before Chime reaches you.';
+export const GOAL_LINE = 'Find the evidence, solve the lift code, and get out before Chime reaches you.';
 
 export function reducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
