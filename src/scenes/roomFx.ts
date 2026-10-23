@@ -4,12 +4,12 @@ import type { PatrolPoint } from '../game/types';
 
 /** Room view bounds in canvas pixels (see ROOM_BLOCKOUT.md). */
 export const ROOM_X = 0;
-export const ROOM_Y = 64;
-export const ROOM_W = 680;
-export const ROOM_H = 476;
+export const ROOM_Y = 40;
+export const ROOM_W = 960;
+export const ROOM_H = 464;
 
 /** Where the lift doors sit in the room. Matches the art once room-bg lands. */
-const LIFT_DOORS = { x: 628, y: 200, w: 76, h: 112 };
+const LIFT_DOORS = { x: 886, y: 200, w: 107, h: 132 };
 
 const WALK_MS = 1200;
 const BOB_MS = 220;
@@ -25,9 +25,9 @@ interface Spot {
 }
 
 const SPOTS: Readonly<Record<PatrolPoint, Spot>> = {
-  office: { x: 175, y: 250, scale: 2, alpha: 0.55 },
-  corridor: { x: 480, y: 272, scale: 3, alpha: 0.8 },
-  'lift-lobby': { x: 628, y: 296, scale: 4, alpha: 1 },
+  office: { x: 247, y: 259, scale: 2, alpha: 0.55 },
+  corridor: { x: 677, y: 285, scale: 3, alpha: 0.8 },
+  'lift-lobby': { x: 886, y: 314, scale: 4, alpha: 1 },
 };
 
 type Body = Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;

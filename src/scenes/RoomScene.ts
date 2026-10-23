@@ -13,10 +13,23 @@ import { roomBackdrop } from './backdrop';
 import { Closeup } from './closeup';
 import { Atmosphere, ChimeSprite, openLiftDoors } from './roomFx';
 
-const HEADER_HEIGHT = 64;
-const RAIL_X = 680;
-const ROOM_W = RAIL_X;
-const STRIP_Y = 456;
+// Slim header and bottom bar leave the room the whole canvas width and ~86% of its height.
+const HEADER_HEIGHT = 40;
+const BAR_H = 36;
+const BAR_Y = GAME_HEIGHT - BAR_H;
+const ROOM_W = GAME_WIDTH;
+const ROOM_H = BAR_Y - HEADER_HEIGHT;
+const ROOM_CY = HEADER_HEIGHT + ROOM_H / 2;
+const KEYPAD_W = 280;
+const KEYPAD_X = GAME_WIDTH - KEYPAD_W - 8;
+const KEYPAD_Y = HEADER_HEIGHT + 4;
+/** The 680x386 closeup art, scaled to fill most of the room view. */
+const CLOSEUP_SCALE = 1.2;
+const CLOSEUP_VIEW = {
+  x: Math.round((ROOM_W - 680 * CLOSEUP_SCALE) / 2),
+  y: Math.round(HEADER_HEIGHT + (ROOM_H - 386 * CLOSEUP_SCALE) / 2),
+  scale: CLOSEUP_SCALE,
+};
 const TIME_LIMIT_MS = 3 * 60 * 1000;
 const WRONG_CODE_PENALTY_MS = 10 * 1000;
 const JUMPSCARE_MS = 900;
@@ -75,6 +88,9 @@ export class RoomScene extends Phaser.Scene {
   private closeup?: Closeup;
   private logPanel?: Phaser.GameObjects.Container;
   private keypad?: Keypad;
+  private keypadPanel?: Phaser.GameObjects.Rectangle;
+  private keypadButton?: Phaser.GameObjects.Text;
+  private keypadOpen = false;
   private chimeSprite?: ChimeSprite;
   private atmosphere?: Atmosphere;
   private timerText!: Phaser.GameObjects.Text;
@@ -125,11 +141,14 @@ export class RoomScene extends Phaser.Scene {
       if (this.logPanel) this.closeLog();
     };
     const onLog = (): void => this.toggleLog();
+    const onKeypad = (): void => this.toggleKeypad();
     this.input.keyboard?.on('keydown-ESC', onEsc);
     this.input.keyboard?.on('keydown-L', onLog);
+    this.input.keyboard?.on('keydown-K', onKeypad);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-ESC', onEsc);
       this.input.keyboard?.off('keydown-L', onLog);
+      this.input.keyboard?.off('keydown-K', onKeypad);
       this.keypad?.destroy();
       this.keypad = undefined;
       if (import.meta.env.DEV) delete window.liftDevSolve;
@@ -160,22 +179,21 @@ export class RoomScene extends Phaser.Scene {
     this.add.text(12, HEADER_HEIGHT / 2, GOAL_LINE, {
       color: css(PALETTE.paper),
       fontFamily: FONT,
-      fontSize: '13px',
-      wordWrap: { width: 470 },
+      fontSize: '11px',
     }).setOrigin(0, 0.5).setDepth(2);
 
-    this.chimeText = this.add.text(500, 14, '', {
+    this.chimeText = this.add.text(556, 5, '', {
       color: css(PALETTE.danger),
       fontFamily: FONT,
       fontSize: '12px',
     }).setDepth(2);
     PATROL.forEach((_, i) => {
-      this.chimePips.push(this.add.rectangle(500 + i * 56, 40, 50, 8, PALETTE.muted).setOrigin(0).setDepth(2));
+      this.chimePips.push(this.add.rectangle(556 + i * 56, 27, 50, 6, PALETTE.muted).setOrigin(0).setDepth(2));
     });
-    this.timerText = this.add.text(828, HEADER_HEIGHT / 2 + 8, this.formatTime(this.remainingMs), {
+    this.timerText = this.add.text(776, HEADER_HEIGHT / 2, this.formatTime(this.remainingMs), {
       color: css(PALETTE.lamp),
       fontFamily: FONT,
-      fontSize: '28px',
+      fontSize: '24px',
     }).setOrigin(0.5).setDepth(2);
 
     // Room view and control rail backdrops (Soham's background art replaces the room view).
@@ -183,17 +201,14 @@ export class RoomScene extends Phaser.Scene {
       this.add.image(0, HEADER_HEIGHT, 'room-bg').setOrigin(0).setScale(4).setDepth(0);
     } else {
       // No room art yet: reuse the menu art, dimmed, instead of a flat blue fill.
-      const art = roomBackdrop(this, 0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT);
+      const art = roomBackdrop(this, 0, HEADER_HEIGHT, ROOM_W, ROOM_H);
       if (art) {
         art.setDepth(0);
-        this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, PALETTE.ink, 0.3).setOrigin(0).setDepth(0);
+        this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, ROOM_H, PALETTE.ink, 0.3).setOrigin(0).setDepth(0);
       } else {
-        this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x211b2e).setOrigin(0);
+        this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, ROOM_H, 0x211b2e).setOrigin(0);
       }
     }
-    this.add.rectangle(RAIL_X, HEADER_HEIGHT, GAME_WIDTH - RAIL_X, GAME_HEIGHT - HEADER_HEIGHT, PALETTE.ink)
-      .setOrigin(0)
-      .setStrokeStyle(2, PALETTE.muted);
     this.banner = this.add.text(ROOM_W / 2, HEADER_HEIGHT + 16, '', {
       color: css(PALETTE.danger),
       backgroundColor: css(PALETTE.ink),
@@ -204,10 +219,34 @@ export class RoomScene extends Phaser.Scene {
   }
 
   private mountKeypad(): void {
-    const keypad = new Keypad(this, RAIL_X, HEADER_HEIGHT);
+    // The keypad is a pull-up panel over the right of the room, so the room keeps the whole screen.
+    this.keypadPanel = this.add.rectangle(KEYPAD_X - 6, KEYPAD_Y - 4, KEYPAD_W + 12, ROOM_H - 4, PALETTE.ink, 0.96)
+      .setOrigin(0)
+      .setStrokeStyle(2, PALETTE.lamp)
+      .setDepth(12)
+      .setInteractive();
+    const keypad = new Keypad(this, KEYPAD_X, KEYPAD_Y);
+    keypad.setDepth(13);
     keypad.onSubmit((code: string): void => this.onSubmit(code));
     keypad.onPress((): void => this.blip(() => sfx.playClick()));
     this.keypad = keypad;
+    this.setKeypadOpen(false);
+  }
+
+  private setKeypadOpen(open: boolean): void {
+    this.keypadOpen = open;
+    this.keypadPanel?.setVisible(open);
+    this.keypad?.setVisible(open);
+    this.keypadButton?.setText(open ? 'CLOSE KEYPAD [K]' : 'KEYPAD [K]');
+    if (open) {
+      this.closeCloseup();
+      this.closeLog();
+    }
+  }
+
+  private toggleKeypad(): void {
+    if (!this.running) return;
+    this.setKeypadOpen(!this.keypadOpen);
   }
 
   // ---------------------------------------------------------------- hotspots
@@ -358,6 +397,7 @@ export class RoomScene extends Phaser.Scene {
   private openCloseup(clue: ClueInstance): void {
     this.closeCloseup();
     this.closeLog();
+    this.setKeypadOpen(false);
     this.closeup = new Closeup(
       this,
       {
@@ -371,7 +411,7 @@ export class RoomScene extends Phaser.Scene {
         onReveal: (indices: number[]): void => this.onReveal(clue, indices),
         onClose: (): void => this.closeCloseup(),
       },
-      HEADER_HEIGHT,
+      CLOSEUP_VIEW,
     );
     this.refreshEvidence();
   }
@@ -410,46 +450,48 @@ export class RoomScene extends Phaser.Scene {
   // ---------------------------------------------------------------- evidence
 
   private drawEvidenceStrip(): void {
-    this.add.rectangle(0, STRIP_Y - 6, ROOM_W, GAME_HEIGHT - STRIP_Y + 6, PALETTE.ink).setOrigin(0).setDepth(5);
-    this.add.rectangle(0, STRIP_Y - 6, ROOM_W, 2, PALETTE.muted).setOrigin(0).setDepth(5);
-    this.evidenceTitle = this.add.text(12, STRIP_Y, '', {
+    this.add.rectangle(0, BAR_Y, ROOM_W, BAR_H, PALETTE.ink).setOrigin(0).setDepth(14);
+    this.add.rectangle(0, BAR_Y, ROOM_W, 2, PALETTE.muted).setOrigin(0).setDepth(14);
+    this.evidenceTitle = this.add.text(12, BAR_Y + BAR_H / 2, '', {
       color: css(PALETTE.lamp),
       fontFamily: FONT,
       fontSize: '12px',
-    }).setDepth(6);
-    this.add.text(ROOM_W - 12, STRIP_Y, 'EVIDENCE LOG  [L]', {
-      color: css(PALETTE.ink),
-      backgroundColor: css(PALETTE.lamp),
-      fontFamily: FONT,
-      fontSize: '12px',
-      padding: { x: 8, y: 4 },
-    }).setOrigin(1, 0).setDepth(6).setInteractive({ useHandCursor: true })
-      .on('pointerup', () => this.toggleLog());
+    }).setOrigin(0, 0.5).setDepth(15);
+    const button = (x: number, label: string, onTap: () => void): Phaser.GameObjects.Text =>
+      this.add.text(x, BAR_Y + BAR_H / 2, label, {
+        color: css(PALETTE.ink),
+        backgroundColor: css(PALETTE.lamp),
+        fontFamily: FONT,
+        fontSize: '13px',
+        padding: { x: 10, y: 6 },
+      }).setOrigin(1, 0.5).setDepth(15).setInteractive({ useHandCursor: true }).on('pointerup', onTap);
+    button(ROOM_W - 8, 'EVIDENCE LOG [L]', () => this.toggleLog());
+    this.keypadButton = button(ROOM_W - 188, 'KEYPAD [K]', () => this.toggleKeypad());
     this.refreshEvidence();
   }
 
   private refreshEvidence(): void {
-    this.evidenceTitle.setText(`EVIDENCE ${completedIds(this.stations).size}/${this.puzzle.clues.length} complete`);
+    this.evidenceTitle.setText(`EVIDENCE ${completedIds(this.stations).size}/${this.puzzle.clues.length}`);
     this.chips.forEach((c) => c.destroy());
     this.chips = [];
-    let x = 12;
-    let y = STRIP_Y + 26;
+    let x = 150;
+    const limit = ROOM_W - 360;
     for (const clue of this.puzzle.clues) {
       if (!hasProgress(this.stations, clue.id)) continue;
       const missing = clue.needs.filter((n) => !this.found.has(n));
-      const chip = this.add.text(x, y, missing.length > 0 ? `${clue.label} (needs ${missing.length})` : clue.label, {
+      const short = clue.label.split(' ').pop() ?? clue.label;
+      const chip = this.add.text(x, BAR_Y + BAR_H / 2, missing.length > 0 ? `${short}?` : short, {
         color: css(missing.length > 0 ? PALETTE.muted : PALETTE.paper),
         backgroundColor: '#2d2540',
         fontFamily: FONT,
-        fontSize: '11px',
-        padding: { x: 6, y: 3 },
-      }).setDepth(6).setInteractive({ useHandCursor: true });
-      if (x + chip.width > ROOM_W - 12) {
-        x = 12;
-        y += 24;
-        chip.setPosition(x, y);
+        fontSize: '12px',
+        padding: { x: 6, y: 4 },
+      }).setOrigin(0, 0.5).setDepth(15).setInteractive({ useHandCursor: true });
+      if (x + chip.width > limit) {
+        chip.destroy();
+        break;
       }
-      x += chip.width + 8;
+      x += chip.width + 6;
       chip.on('pointerup', () => this.inspect(clue));
       this.chips.push(chip);
     }
@@ -475,28 +517,29 @@ export class RoomScene extends Phaser.Scene {
       .filter((c) => hasProgress(this.stations, c.id))
       .map((c) => `${c.label.toUpperCase()}\n${this.evidenceBlock(c)}`);
     const text = lines.length > 0 ? lines.join('\n\n') : 'Nothing yet. Click the glowing object to start.';
-    const shade = this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x000000, 0.6)
+    this.setKeypadOpen(false);
+    const shade = this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, ROOM_H, 0x000000, 0.6)
       .setOrigin(0)
       .setInteractive();
-    const art = roomBackdrop(this, 0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT);
+    const art = roomBackdrop(this, 0, HEADER_HEIGHT, ROOM_W, ROOM_H);
     if (art) shade.setFillStyle(0x000000, 0.15);
-    const panel = this.add.rectangle(ROOM_W / 2, HEADER_HEIGHT + 215, 620, 400, PALETTE.ink, art ? 0.55 : 1).setStrokeStyle(3, PALETTE.lamp);
-    const title = this.add.text(ROOM_W / 2, HEADER_HEIGHT + 30, 'EVIDENCE LOG', {
+    const panel = this.add.rectangle(ROOM_W / 2, ROOM_CY, 780, ROOM_H - 24, PALETTE.ink, art ? 0.7 : 1).setStrokeStyle(3, PALETTE.lamp);
+    const title = this.add.text(ROOM_W / 2, ROOM_CY - ROOM_H / 2 + 34, 'EVIDENCE LOG', {
       color: css(PALETTE.lamp),
       fontFamily: FONT,
-      fontSize: '16px',
+      fontSize: '18px',
     }).setOrigin(0.5);
-    const body = this.add.text(ROOM_W / 2 - 290, HEADER_HEIGHT + 56, text, {
+    const body = this.add.text(ROOM_W / 2 - 360, ROOM_CY - ROOM_H / 2 + 60, text, {
       color: css(PALETTE.paper),
       fontFamily: FONT,
-      fontSize: '11px',
-      lineSpacing: 2,
-      wordWrap: { width: 580 },
+      fontSize: '13px',
+      lineSpacing: 3,
+      wordWrap: { width: 720 },
     });
-    const hint = this.add.text(ROOM_W / 2, HEADER_HEIGHT + 400, 'Click or press Esc to close', {
+    const hint = this.add.text(ROOM_W / 2, ROOM_CY + ROOM_H / 2 - 24, 'Click or press Esc to close', {
       color: css(PALETTE.muted),
       fontFamily: FONT,
-      fontSize: '11px',
+      fontSize: '12px',
     }).setOrigin(0.5);
     shade.on('pointerup', () => this.closeLog());
     this.logPanel = this.add.container(0, 0, art ? [art, shade, panel, title, body, hint] : [shade, panel, title, body, hint]).setDepth(10);

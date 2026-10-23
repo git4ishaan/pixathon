@@ -190,6 +190,7 @@ export class Keypad extends Phaser.GameObjects.Container {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    if (!this.visible) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.key === 'Backspace') this.press('delete');
     else if (event.key === 'Enter') this.press('submit');

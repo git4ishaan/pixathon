@@ -550,6 +550,13 @@ function stationArt(id: ClueId, observation: string): StationArt {
 
 // ------------------------------------------------------------------- closeup
 
+/** Where the closeup panel sits on the canvas: top-left corner and uniform scale of the 680x386 art. */
+export interface CloseupView {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 export interface CloseupOptions {
   clueId: ClueId;
   title: string;
@@ -592,12 +599,12 @@ export class Closeup {
   private closing = false;
   private readonly onKey = (): void => this.requestClose();
 
-  constructor(private readonly scene: Phaser.Scene, private readonly opts: CloseupOptions, originY: number) {
+  constructor(private readonly scene: Phaser.Scene, private readonly opts: CloseupOptions, private readonly view: CloseupView) {
     this.revealed = new Set(opts.revealed);
     const art = stationArt(opts.clueId, opts.observation);
     const assignment = assignFragments(opts.fragments.length, art.slots.length);
 
-    this.root = scene.add.container(0, originY).setDepth(10);
+    this.root = scene.add.container(view.x, view.y).setScale(view.scale).setDepth(10);
     // The room's art behind a dark wash, so the closeup is not a flat blue panel.
     const backdrop = roomBackdrop(scene, 0, 0, CLOSEUP_W, CLOSEUP_H);
     if (backdrop) this.root.add(backdrop);
@@ -709,11 +716,11 @@ export class Closeup {
     this.refreshText();
 
     scene.input.keyboard?.on('keydown-ESC', this.onKey);
-    this.zoomIn(originY);
+    this.zoomIn();
   }
 
   /** Grow from the clicked prop to fill the room view. Instant when reduced motion is on. */
-  private zoomIn(originY: number): void {
+  private zoomIn(): void {
     if (reducedMotion()) {
       // Reduced motion: a quick cross-fade, no movement or scale.
       this.root.setAlpha(0);
@@ -728,9 +735,9 @@ export class Closeup {
     this.counters.push(
       this.scene.tweens.add({
         targets: this.root,
-        scale: 1,
-        x: 0,
-        y: originY,
+        scale: this.view.scale,
+        x: this.view.x,
+        y: this.view.y,
         alpha: 1,
         duration: 250,
         ease: 'Cubic.easeOut',
