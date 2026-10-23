@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { chimeBell, scareSting, winJingle, wrongBuzz } from '../audio/sfx';
+import { chimeBell, keyClick, scareSting, winJingle, wrongBuzz } from '../audio/sfx';
 import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE, reducedMotion } from '../config';
 import { advanceChime, initChime, isClueLocked, TIMER_STEPS_MS } from '../game/chime';
 import { createPuzzle, freshSeed, submitCode } from '../game/rules';
@@ -176,6 +176,7 @@ export class RoomScene extends Phaser.Scene {
   private mountKeypad(): void {
     const keypad = new Keypad(this, RAIL_X, HEADER_HEIGHT);
     keypad.onSubmit((code: string): void => this.onSubmit(code));
+    keypad.onPress((): void => keyClick(this));
     this.keypad = keypad;
   }
 

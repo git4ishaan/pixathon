@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { keyClick } from './audio/sfx';
 import { PALETTE } from './config';
 import type { ClueId, SubmissionResult } from './game/types';
 
@@ -38,6 +37,7 @@ export class Keypad extends Phaser.GameObjects.Container {
   private code = '';
   private locked = false;
   private submitCb: (code: string) => void = () => {};
+  private pressCb: () => void = () => {};
   private readonly slotTexts: Phaser.GameObjects.Text[] = [];
   private readonly slotBoxes: Phaser.GameObjects.Rectangle[] = [];
   private resultObjects: Phaser.GameObjects.Text[] = [];
@@ -57,6 +57,11 @@ export class Keypad extends Phaser.GameObjects.Container {
 
   onSubmit(cb: (code: string) => void): void {
     this.submitCb = cb;
+  }
+
+  /** Called once for every accepted key press (touch or keyboard), e.g. to play a click sound. */
+  onPress(cb: () => void): void {
+    this.pressCb = cb;
   }
 
   getCode(): string {
@@ -180,7 +185,7 @@ export class Keypad extends Phaser.GameObjects.Container {
 
   private press(action: KeyAction): void {
     if (this.locked) return;
-    keyClick(this.scene);
+    this.pressCb();
     if (action === 'delete') {
       this.code = this.code.slice(0, -1);
     } else if (action === 'clear') {
