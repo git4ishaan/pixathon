@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { sfx } from '../audio/sfx';
 import { PALETTE, reducedMotion } from '../config';
+import { stationDigit } from '../game/rules';
 import { assignFragments } from '../game/stations';
 import type { ClueId } from '../game/types';
 
@@ -24,6 +25,8 @@ interface Rect {
 
 /** p: reveal progress 0..1 (animated). hover/pressed are interaction states. */
 interface DrawState {
+  /** Untapped part with evidence in it: glows to say "tap me". */
+  hint: boolean;
   p: number;
   hover: boolean;
   pressed: boolean;
@@ -58,6 +61,13 @@ function frame(g: Phaser.GameObjects.Graphics, c: number, r: Rect, w = 2): void 
 const r4 = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h });
 /** Highlight ring shared by every slot: hover brightens, pressed thickens. */
 function ring(g: Phaser.GameObjects.Graphics, s: DrawState, rects: Rect[]): void {
+  if (s.hint && !s.hover && !s.pressed) {
+    // Slow glow (about 0.8 Hz). A steady ring under reduced motion, so motion is never the only cue.
+    const a = reducedMotion() ? 0.8 : 0.35 + 0.5 * (0.5 + 0.5 * Math.sin(s.t / 320));
+    g.lineStyle(3, P.lamp, a);
+    for (const r of rects) g.strokeRect(Math.round(r.x - 3), Math.round(r.y - 3), Math.round(r.w + 6), Math.round(r.h + 6));
+    return;
+  }
   if (!s.hover && !s.pressed) return;
   for (const r of rects) frame(g, s.pressed ? P.paper : P.lamp, r4(r.x - 3, r.y - 3, r.w + 6, r.h + 6), s.pressed ? 3 : 2);
 }
@@ -69,11 +79,11 @@ function flip(p: number): { k: number; front: boolean } {
 // ------------------------------------------------------------------ stations
 
 function partyTable(markedSeat: number, candles: number): StationArt {
-  const cardX = (i: number): number => 62 + i * 100;
+  const cardX = (i: number): number => 40 + i * 76;
   const cardY = 92;
-  const cardRect = (i: number): Rect => r4(cardX(i), cardY, 72, 92);
-  const marked = Math.min(5, Math.max(0, markedSeat - 1));
-  const others = [0, 1, 2, 3, 4, 5].filter((i) => i !== marked);
+  const cardRect = (i: number): Rect => r4(cardX(i), cardY, 60, 92);
+  const marked = Math.min(7, Math.max(0, markedSeat - 1));
+  const others = [0, 1, 2, 3, 4, 5, 6, 7].filter((i) => i !== marked);
   const face = (g: Phaser.GameObjects.Graphics, i: number, p: number, withCandles: boolean): void => {
     const r = cardRect(i);
     const { k, front } = flip(p);
@@ -85,7 +95,7 @@ function partyTable(markedSeat: number, candles: number): StationArt {
       box(g, P.plum, r4(x + w * 0.2, r.y + 12, w * 0.6, r.h - 24));
     } else if (withCandles && k > 0.7) {
       for (let c = 0; c < candles; c++) {
-        const cx = x + 8 + (c % 5) * 12;
+        const cx = x + 6 + (c % 5) * 10;
         const cy = r.y + 18 + Math.floor(c / 5) * 34;
         box(g, P.danger, r4(cx, cy + 6, 4, 14));
         box(g, P.lamp, r4(cx, cy, 4, 6));
@@ -98,12 +108,12 @@ function partyTable(markedSeat: number, candles: number): StationArt {
       box(g, P.brass, r4(20, 188, 640, 4));
       box(g, P.plum, r4(20, 236, 640, 8));
       // paper hats between the cards
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 7; i++) {
         g.fillStyle(i % 2 ? P.danger : P.lamp, 1);
-        g.fillTriangle(cardX(i) + 86 - 12, 188, cardX(i) + 86, 164, cardX(i) + 86 + 12, 188);
+        g.fillTriangle(cardX(i) + 68 - 7, 188, cardX(i) + 68, 168, cardX(i) + 68 + 7, 188);
       }
     },
-    captions: [0, 1, 2, 3, 4, 5].map((i) => ({ x: cardX(i) + 36, y: cardY + 106, text: String(i + 1), size: 14, color: P.paper })),
+    captions: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ x: cardX(i) + 30, y: cardY + 106, text: String(i + 1), size: 14, color: P.paper })),
     slots: [
       {
         label: 'Place-card sign',
@@ -136,9 +146,10 @@ function partyTable(markedSeat: number, candles: number): StationArt {
   };
 }
 
-function lobbyDisplay(figures: number): StationArt {
-  const count = Math.min(5, Math.max(2, figures + 1));
-  const fx = (i: number): number => 340 - ((count - 1) * 74) / 2 + i * 74;
+function lobbyDisplay(guests: number): StationArt {
+  const count = Math.min(10, guests + 1);
+  const pitch = Math.min(74, 480 / count);
+  const fx = (i: number): number => 340 - ((count - 1) * pitch) / 2 + i * pitch;
   const attendant = count - 1;
   const figure = (g: Phaser.GameObjects.Graphics, i: number, badge: boolean, p: number, hover: boolean): void => {
     const x = fx(i);
@@ -284,7 +295,12 @@ function wallCalendar(): StationArt {
         label: 'May page',
         hit: [may],
         draw: (g, s) => {
-          page(g, may, P.dusk, s.p, 2);
+          page(g, may, P.dusk, 0, 2);
+          if (s.p > 0) {
+            g.lineStyle(6, P.danger, 0.9);
+            g.lineBetween(may.x + 10, may.y + 10, may.x + 10 + (may.w - 20) * s.p, may.y + 10 + (may.h - 20) * s.p);
+            g.lineBetween(may.x + may.w - 10, may.y + 10, may.x + may.w - 10 - (may.w - 20) * s.p, may.y + 10 + (may.h - 20) * s.p);
+          }
           ring(g, s, [may]);
         },
       },
@@ -509,12 +525,11 @@ function servicePanel(): StationArt {
 function stationArt(id: ClueId, observation: string): StationArt {
   switch (id) {
     case 'party-table': {
-      const seat = /Seat (\d)'s card/.exec(observation);
-      const candles = /shows (\d+) candles/.exec(observation);
-      return partyTable(seat ? Number(seat[1]) : 3, candles ? Math.min(9, Number(candles[1])) : 5);
+      const known = stationDigit(id, observation);
+      return partyTable(known?.seat ?? 3, Math.min(9, known?.digit ?? 0));
     }
     case 'lobby-display': {
-      const n = /holds (\d+) figures/.exec(observation);
+      const n = /holds (\d+) guest figures?/.exec(observation);
       return lobbyDisplay(n ? Number(n[1]) : 2);
     }
     case 'missing-poster':
@@ -556,7 +571,7 @@ interface SlotView {
   progress: number;
   hover: boolean;
   pressed: boolean;
-  tick: Phaser.GameObjects.Text;
+  tick: Phaser.GameObjects.Graphics;
   zones: Phaser.GameObjects.Rectangle[];
 }
 
@@ -565,6 +580,7 @@ export class Closeup {
   private readonly views: SlotView[] = [];
   private readonly textBox: Phaser.GameObjects.Text;
   private readonly status: Phaser.GameObjects.Text;
+  private readonly digitBox: Phaser.GameObjects.Text;
   private readonly hoverLabel: Phaser.GameObjects.Text;
   private revealed: Set<number>;
   private dead = false;
@@ -572,7 +588,8 @@ export class Closeup {
   private readonly timers: Phaser.Time.TimerEvent[] = [];
   private lastRevealed: number[] = [];
   private highlightUntil = 0;
-  private readonly onKey = (): void => this.opts.onClose();
+  private closing = false;
+  private readonly onKey = (): void => this.requestClose();
 
   constructor(private readonly scene: Phaser.Scene, private readonly opts: CloseupOptions, originY: number) {
     this.revealed = new Set(opts.revealed);
@@ -591,7 +608,12 @@ export class Closeup {
       fontSize: '13px',
       padding: { x: 10, y: 6 },
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
-    back.on('pointerup', () => opts.onClose());
+    back.on('pointerdown', () => this.pressScale(back, 0.96));
+    back.on('pointerout', () => this.pressScale(back, 1));
+    back.on('pointerup', () => {
+      this.pressScale(back, 1);
+      this.requestClose();
+    });
     this.root.add(back);
     this.root.add(scene.add.text(14, 12, opts.title.toUpperCase(), { color: css(P.lamp), fontFamily: FONT, fontSize: '16px' }));
     this.status = scene.add.text(14, 34, '', { color: css(P.muted), fontFamily: FONT, fontSize: '11px' });
@@ -613,14 +635,16 @@ export class Closeup {
 
     art.slots.forEach((slot, i) => {
       const gfx = scene.add.graphics();
-      const tick = scene.add.text(0, 0, 'ok', {
-        color: css(P.ink),
-        backgroundColor: css(P.lamp),
-        fontFamily: FONT,
-        fontSize: '11px',
-        fontStyle: 'bold',
-        padding: { x: 4, y: 2 },
-      }).setOrigin(0.5).setVisible(false);
+      // Check badge: a drawn tick, so "done" is a shape and not just a colour.
+      const tick = scene.add.graphics().setVisible(false);
+      tick.fillStyle(P.lamp, 1);
+      tick.fillCircle(0, 0, 10);
+      tick.lineStyle(3, P.ink, 1);
+      tick.beginPath();
+      tick.moveTo(-5, 0);
+      tick.lineTo(-1, 4);
+      tick.lineTo(6, -5);
+      tick.strokePath();
       const top = slot.hit.reduce((a, r) => (r.y < a.y ? r : a), slot.hit[0]);
       tick.setPosition(top.x + top.w - 4, top.y - 4);
       stageBox.add([gfx, tick]);
@@ -676,6 +700,8 @@ export class Closeup {
       wordWrap: { width: CLOSEUP_W - 28 },
     });
     this.root.add(this.textBox);
+    this.digitBox = scene.add.text(14, 284, '', { color: css(P.lamp), fontFamily: FONT, fontSize: '28px', fontStyle: 'bold' }).setVisible(false);
+    this.root.add(this.digitBox);
     this.refreshText();
 
     scene.input.keyboard?.on('keydown-ESC', this.onKey);
@@ -684,7 +710,12 @@ export class Closeup {
 
   /** Grow from the clicked prop to fill the room view. Instant when reduced motion is on. */
   private zoomIn(originY: number): void {
-    if (reducedMotion()) return;
+    if (reducedMotion()) {
+      // Reduced motion: a quick cross-fade, no movement or scale.
+      this.root.setAlpha(0);
+      this.counters.push(this.scene.tweens.add({ targets: this.root, alpha: 1, duration: 150, ease: 'Sine.easeOut' }));
+      return;
+    }
     const o = this.opts.origin;
     const k = Math.max(o.h / CLOSEUP_H, 0.2);
     const x0 = o.x - (CLOSEUP_W * k) / 2;
@@ -697,7 +728,7 @@ export class Closeup {
         x: 0,
         y: originY,
         alpha: 1,
-        duration: 260,
+        duration: 250,
         ease: 'Cubic.easeOut',
       }),
     );
@@ -706,13 +737,38 @@ export class Closeup {
   /** Called every frame by the scene so flicker animations (radio) keep moving. */
   tick(): void {
     const now = this.scene.time.now;
-    for (const v of this.views) if (v.progress > 0 && v.slot.label === 'Speaker grille') this.redraw(v);
-    for (const v of this.views) if (v.slot.label === 'Power knob' && v.progress > 0) this.redraw(v);
+    for (const v of this.views) {
+      const animated = v.progress > 0 && (v.slot.label === 'Speaker grille' || v.slot.label === 'Power knob');
+      if (animated || (v.fragments.length > 0 && !this.slotRevealed(v))) this.redraw(v);
+    }
     if (this.highlightUntil !== 0 && now > this.highlightUntil) {
       this.highlightUntil = 0;
       this.lastRevealed = [];
       this.refreshText();
     }
+  }
+
+  /** Exits are shorter and smaller than the entrance: a 150 ms fade with a 12 px lift. */
+  requestClose(): void {
+    if (this.dead || this.closing) return;
+    this.closing = true;
+    const done = (): void => this.opts.onClose();
+    this.counters.push(
+      this.scene.tweens.add({
+        targets: this.root,
+        alpha: 0,
+        y: reducedMotion() ? this.root.y : this.root.y - 12,
+        duration: 150,
+        ease: 'Sine.easeOut',
+        onComplete: done,
+      }),
+    );
+  }
+
+  /** Pressed controls shrink to 0.96 over 150 ms (skipped under reduced motion). */
+  private pressScale(target: Phaser.GameObjects.Text, scale: number): void {
+    if (reducedMotion() || this.dead) return;
+    this.scene.tweens.add({ targets: target, scale, duration: 150, ease: 'Sine.easeOut' });
   }
 
   destroy(): void {
@@ -728,6 +784,8 @@ export class Closeup {
   }
 
   private setHover(v: SlotView, on: boolean): void {
+    // A tap leaves :hover latched on touch screens, so hover styling is for mouse pointers only.
+    if (on && this.scene.input.activePointer.wasTouch) return;
     v.hover = on;
     this.redraw(v);
     if (on) {
@@ -741,7 +799,13 @@ export class Closeup {
   private redraw(v: SlotView): void {
     if (this.dead) return;
     v.gfx.clear();
-    v.slot.draw(v.gfx, { p: v.progress, hover: v.hover, pressed: v.pressed, t: this.scene.time.now });
+    v.slot.draw(v.gfx, {
+      hint: v.fragments.length > 0 && !this.slotRevealed(v),
+      p: v.progress,
+      hover: v.hover,
+      pressed: v.pressed,
+      t: this.scene.time.now,
+    });
     v.tick.setVisible(v.fragments.length > 0 && this.slotRevealed(v));
   }
 
@@ -804,16 +868,16 @@ export class Closeup {
     const done = got >= total;
     this.status.setText(
       done
-        ? 'COMPLETE: added to the evidence log.'
-        : `Examine the parts of the ${this.opts.title.toLowerCase()}. ${got}/${total} details found.`,
+        ? 'DONE. Remember this digit for the keypad.'
+        : `Tap the glowing parts to look closer.  ${got} of ${total} found.`,
     );
     this.status.setColor(css(done ? P.lamp : P.muted));
-    const lines = this.opts.fragments
-      .map((f, i) => ({ f, i }))
-      .filter(({ i }) => this.revealed.has(i))
-      .map(({ f }) => f);
-    const base = lines.length > 0 ? lines.join(' ') : 'Tap a part of the object to look closer.';
-    this.textBox.setText(this.opts.needsNote && done ? `${base}\n\n${this.opts.needsNote}` : base);
+    const lines = this.opts.fragments.filter((_, i) => this.revealed.has(i));
+    const base = lines.length > 0 ? lines.join(' ') : 'Nothing yet. Tap a glowing part.';
+    const known = done ? stationDigit(this.opts.clueId, this.opts.observation) : null;
+    this.digitBox.setText(known ? `SEAT ${known.seat}  =  ${known.digit}` : '').setVisible(known !== null);
+    this.textBox.setY(known ? 322 : 288);
+    this.textBox.setText(base);
     this.textBox.setColor(css(this.lastRevealed.length > 0 ? P.lamp : P.paper));
   }
 }

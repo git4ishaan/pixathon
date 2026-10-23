@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { sfx } from '../audio/sfx';
 import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE, reducedMotion } from '../config';
 import { advanceChime, initChime, isClueLocked, TIMER_STEPS_MS } from '../game/chime';
-import { createPuzzle, freshSeed, submitCode } from '../game/rules';
+import { CODE_LENGTH, createPuzzle, freshSeed, submitCode } from '../game/rules';
 import { CLUE_IDS } from '../game/types';
 import type { ChimeState, ClueId, ClueInstance, PatrolPoint, Puzzle } from '../game/types';
 import { completedIds, hasProgress, initStations, isComplete, revealFragments, revealedText, splitFragments } from '../game/stations';
@@ -589,14 +589,26 @@ export class RoomScene extends Phaser.Scene {
     this.time.delayedCall(JUMPSCARE_MS, done);
   }
 
-  /** Dev only: tries every six-digit code through submitCode and returns the one that passes. */
+  /** Dev only: finds the code one position at a time through submitCode (80 calls, not 10^8). */
   private devSolve(): string | null {
     const all = new Set<ClueId>(CLUE_IDS);
-    for (let n = 0; n < 1_000_000; n++) {
-      const attempt = n.toString().padStart(6, '0');
-      if (submitCode(this.puzzle, attempt, all).pass) return attempt;
+    const digits = new Array<number>(CODE_LENGTH).fill(0);
+    for (let pos = 0; pos < CODE_LENGTH; pos++) {
+      let best = 0;
+      let bestOk = -1;
+      for (let d = 0; d <= 9; d++) {
+        const trial = digits.slice();
+        trial[pos] = d;
+        const ok = submitCode(this.puzzle, trial.join(''), all).results.filter((r) => r.ok).length;
+        if (ok > bestOk) {
+          bestOk = ok;
+          best = d;
+        }
+      }
+      digits[pos] = best;
     }
-    return null;
+    const code = digits.join('');
+    return submitCode(this.puzzle, code, all).pass ? code : null;
   }
 
   /** Largest whole-number scale at which a prop texture fits inside its hotspot. */

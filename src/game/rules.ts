@@ -1,29 +1,27 @@
 /**
- * LAST LIFT: seeded puzzle generator, evaluator and solver proof.
+ * LAST LIFT: seeded puzzle generator, evaluator and verifier.
  * Pure TypeScript. No Phaser, no DOM.
  *
- * The six-digit code is generated per seed and kept in a private WeakMap, never on the Puzzle.
+ * The eight-digit code is generated per seed and kept in a private WeakMap, never on the Puzzle.
  * The source is public, so the seed gives replayability, not secrecy.
  *
- * Structure (seats are code positions 1..6, shuffled per seed into roles a, b, c, e, f, g):
- *   party-table    pins seat a
- *   lobby-display  pins seat b
- *   radio          pins seat f, decoded with the service panel's tone chart
- *   missing-poster gives seat g modulo 5, decoded with the plaque's locker ledger
- *   wall-calendar  picks between the two values the poster leaves (June page; the May page is stale)
- *   ticket-stub    sum of seats c and e
- *   plaque         difference of seats c and e
- *   service-panel  which of c and e is lower (resolves the sum/difference swap)
- * Uniqueness and necessity are proven by brute force (verifyPuzzle), not assumed.
+ * Every clue is independent: each of the eight props names one seat (code position 1..8) and the
+ * digit in it, in plain words. No sums, differences, comparisons or "needs another clue". The seat
+ * a prop talks about is shuffled per seed, so the order of digits is not the order of the props.
+ * Uniqueness and necessity are measured by verifyPuzzle, not assumed.
  */
 import { CLUE_IDS } from './types';
 import type { ClueId, ClueInstance, ProofReport, Puzzle, SubmissionResult } from './types';
 import { CLUE_LAYOUT } from '../data/clues';
 
+export const CODE_LENGTH = 8;
+
 type Digits = readonly number[];
 
 interface Constraint {
   clueId: ClueId;
+  /** Zero-based code position this clue is about. */
+  seat: number;
   observation: string;
   needs: ClueId[];
   check(d: Digits): boolean;
@@ -34,7 +32,6 @@ interface Built {
   constraints: Constraint[];
 }
 
-const SPACE = 1_000_000;
 const built = new WeakMap<Puzzle, Built>();
 
 // ---------------------------------------------------------------- random
@@ -71,145 +68,53 @@ function shuffled<T>(rng: Rng, xs: readonly T[]): T[] {
 
 // ---------------------------------------------------------------- generator
 
-const LETTERS = 'ABCDEFGHIJ';
-const TONES = ['low', 'middle', 'high'] as const;
-const seatNo = (i: number): number => i + 1;
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** Plain wording per clue: seat s (1-based) holds digit k. */
+const WORDING: Readonly<Record<ClueId, (s: number, k: number) => string>> = {
+  'party-table': (s, k) =>
+    `Eight place cards stand in a row, numbered 1 to 8, the order the lift reads a code. ` +
+    `Seat ${s}'s card shows ${k === 0 ? 'an empty candle holder' : `${plural(k, 'candle')} drawn on it`}. ` +
+    `The other cards are blank.`,
+  'lobby-display': (s, k) =>
+    `A display case is tagged "Seat ${s}". ` +
+    `A bellhop figure with a brass badge stands at the back. ` +
+    `It holds ${plural(k, 'guest figure')} besides him.`,
+  'missing-poster': (s, k) =>
+    `MISSING: Mia. She sat at place ${s} at the party. ` +
+    `Her locker number is stapled to the corner: ${k}.`,
+  'wall-calendar': (s, k) =>
+    `Two calendar pages are pinned together. The page headed JUNE 1987 has a note on the 21st: ` +
+    `"Seat ${s} is ${k}." The page headed MAY 1986 is crossed out.`,
+  radio: (s, k) =>
+    `The radio repeats ${k === 0 ? 'one long silence' : plural(k, 'short pulse')}. ` +
+    `A strip of tape on the dial reads: "Seat ${s}". Then static.`,
+  'ticket-stub': (s, k) => `ADMIT 21. On the back in pencil: "Seat ${s} is ${k}."`,
+  plaque: (s, k) =>
+    `Brass plaque: "Vale's Department Store. Closed after the party of June 1987." ` +
+    `Guest record: Seat ${s} came with ${plural(k, 'guest')}. ` +
+    `A locker ledger is engraved along the bottom, one line for each seat.`,
+  'service-panel': (s, k) =>
+    `Service panel. A chart taped inside the cover reads: "Seat ${s} is ${k}." ` +
+    `Several keys are worn smooth. The panel hums faintly.`,
+};
 
 function build(seed: string): Built {
   const rng = mulberry32(hashSeed(seed));
-  const [a, b, c, e, f, g] = shuffled(rng, [0, 1, 2, 3, 4, 5]);
-
-  const code: number[] = [0, 0, 0, 0, 0, 0];
-  for (const seat of [a, b, c, f, g]) code[seat] = int(rng, 0, 9);
-  // sum 3..15 leaves two ordered pairs (else the difference clue is redundant); difference below 9
-  // (else the sum clue is redundant)
-  do code[e] = int(rng, 0, 9);
-  while (code[e] === code[c] || code[c] + code[e] < 3 || code[c] + code[e] > 15 || Math.abs(code[c] - code[e]) === 9);
-
-  const [lo, hi] = code[c] < code[e] ? [c, e] : [e, c];
-  const sum = code[c] + code[e];
-  const diff = Math.abs(code[c] - code[e]);
-
-  // radio tones map to three seats, one of which is f
-  const others = shuffled(rng, [a, b, c, e, g]).slice(0, 2);
-  const toneIndex = int(rng, 0, 2);
-  const toneSeats = [...others];
-  toneSeats.splice(toneIndex, 0, f);
-
-  // poster leaves seat g as v or v + 5; the calendar chooses
-  const letter = LETTERS[(code[g] % 5) + (rng() < 0.5 ? 0 : 5)];
-  const upper = code[g] >= 5;
-  // keep the threshold loose enough that the poster is still needed
-  const w = upper ? int(rng, code[g] - 5, Math.min(code[g] - 1, 7)) : int(rng, Math.max(code[g] + 1, 2), code[g] + 5);
-  let stale = int(rng, 1, 8);
-  if (stale === w) stale += 1;
-  const dir = upper ? 'over' : 'under';
-
-  const n = code[f];
-  const constraints: Constraint[] = [
-    {
-      clueId: 'party-table',
+  const seats = shuffled(rng, Array.from({ length: CODE_LENGTH }, (_, i) => i));
+  const code = Array.from({ length: CODE_LENGTH }, () => int(rng, 0, 9));
+  const constraints: Constraint[] = CLUE_IDS.map((clueId, i) => {
+    const seat = seats[i];
+    const digit = code[seat];
+    return {
+      clueId,
+      seat,
+      observation: WORDING[clueId](seat + 1, digit),
       needs: [],
-      observation:
-        `Six place cards stand in a row, numbered 1 to 6, the order the lift reads a code. ` +
-        `Seat ${seatNo(a)}'s card shows ${code[a] === 0 ? 'an empty candle holder' : `${plural(code[a], 'candle')} drawn on it`}. ` +
-        `The other cards are blank.`,
-      check: (d) => d[a] === code[a],
-    },
-    {
-      clueId: 'lobby-display',
-      needs: [],
-      observation:
-        `A display case tagged "Seat ${seatNo(b)}" holds ${plural(code[b] + 1, 'figure')}. ` +
-        `One wears a brass staff badge and a tag: "attendant, not part of the display".`,
-      check: (d) => d[b] === code[b],
-    },
-    {
-      clueId: 'missing-poster',
-      needs: ['plaque'],
-      observation:
-        `MISSING: Mia, age 9. She sat at place ${seatNo(g)} at the party. ` +
-        `Her locker tag is stapled to the corner: ${letter}.`,
-      check: (d) => d[g] % 5 === code[g] % 5,
-    },
-    {
-      clueId: 'wall-calendar',
-      needs: ['plaque'],
-      observation:
-        `Two calendar pages are pinned together. The page headed JUNE 1987 has a note on the 21st: ` +
-        `"Seat ${seatNo(g)} ${dir} ${w}." The page headed MAY 1986 has a note too: ` +
-        `"Seat ${seatNo(g)} ${dir} ${stale}."`,
-      check: upper ? (d) => d[g] > w : (d) => d[g] < w,
-    },
-    {
-      clueId: 'radio',
-      needs: ['service-panel'],
-      observation:
-        `The radio repeats ${n === 0 ? 'one long silence' : plural(n, 'short pulse')}, then a ${TONES[toneIndex]} carrier tone, ` +
-        `then static.`,
-      check: (d) => d[f] === code[f],
-    },
-    {
-      clueId: 'ticket-stub',
-      needs: [],
-      observation: `ADMIT 21. On the back in pencil: "seats ${seatNo(c)} and ${seatNo(e)}, added together: ${sum}."`,
-      check: (d) => d[c] + d[e] === sum,
-    },
-    {
-      clueId: 'plaque',
-      needs: [],
-      observation:
-        `Brass plaque: "Vale's Department Store. Renovated May 1986. Closed after the party of June 1987." ` +
-        `Guest record: seats ${seatNo(c)} and ${seatNo(e)} differ by ${diff}. ` +
-        `A locker ledger is engraved along the bottom: A is 0, B is 1, C is 2, D is 3, E is 4, then F is 0 again, ` +
-        `G is 1, and so on to J.`,
-      check: (d) => Math.abs(d[c] - d[e]) === diff,
-    },
-    {
-      clueId: 'service-panel',
-      needs: [],
-      observation:
-        `Service panel. A frequency chart is taped inside the cover: low tone is seat ${seatNo(toneSeats[0])}, ` +
-        `middle tone is seat ${seatNo(toneSeats[1])}, high tone is seat ${seatNo(toneSeats[2])}. ` +
-        `Two keys are worn smooth, seats ${seatNo(lo)} and ${seatNo(hi)}. Seat ${seatNo(lo)}'s is the more worn, ` +
-        `as if its lower digit is always pressed first.`,
-      check: (d) => d[lo] < d[hi],
-    },
-  ];
-
+      check: (d) => d[seat] === digit,
+    };
+  });
   return { code, constraints };
-}
-
-// ------------------------------------------------------------- solver core
-
-function digitsOf(n: number, out: number[]): void {
-  for (let i = 5; i >= 0; i--) {
-    out[i] = n % 10;
-    n = (n - out[i]) / 10;
-  }
-}
-
-/** One pass over all 10^6 codes: solutions and, per constraint, solutions when it is removed. */
-function analyse(cons: readonly Constraint[]): { solutions: number; without: number[] } {
-  const d: number[] = [0, 0, 0, 0, 0, 0];
-  const only = new Array<number>(cons.length).fill(0);
-  let solutions = 0;
-  for (let n = 0; n < SPACE; n++) {
-    digitsOf(n, d);
-    let fails = 0;
-    let failIdx = -1;
-    for (let i = 0; i < cons.length; i++) {
-      if (!cons[i].check(d)) {
-        fails++;
-        failIdx = i;
-        if (fails > 1) break;
-      }
-    }
-    if (fails === 0) solutions++;
-    else if (fails === 1) only[failIdx]++;
-  }
-  return { solutions, without: only.map((x) => x + solutions) };
 }
 
 // ------------------------------------------------------------------- public
@@ -222,26 +127,8 @@ export function dailySeed(date: Date = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 
-const MAX_ATTEMPTS = 50;
-const verified = new Map<string, Built>();
-
-/** Retries derived seeds until the puzzle has exactly one solution and every clue is necessary. */
-function buildVerified(seed: string): Built {
-  const cached = verified.get(seed);
-  if (cached) return cached;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const candidate = build(attempt === 0 ? seed : `${seed}#${attempt}`);
-    const proof = analyse(candidate.constraints);
-    if (proof.solutions === 1 && proof.without.every((n) => n > 1)) {
-      verified.set(seed, candidate);
-      return candidate;
-    }
-  }
-  throw new Error(`No valid puzzle found for seed "${seed}"`);
-}
-
 export function createPuzzle(seed: string): Puzzle {
-  const result = buildVerified(seed);
+  const result = build(seed);
   const byId = new Map(result.constraints.map((c) => [c.clueId, c]));
   const clues: ClueInstance[] = CLUE_LAYOUT.map((layout) => {
     const c = byId.get(layout.id);
@@ -272,7 +159,7 @@ export function submitCode(
 ): SubmissionResult {
   const b = built.get(puzzle);
   if (!b) throw new Error('Unknown puzzle');
-  const d = /^\d{6}$/.test(attempt) ? [...attempt].map(Number) : null;
+  const d = new RegExp(`^\\d{${CODE_LENGTH}}$`).test(attempt) ? [...attempt].map(Number) : null;
   const results = b.constraints
     .filter((c) => found.has(c.clueId))
     .map((c) => ({ clueId: c.clueId, ok: d !== null && c.check(d) }));
@@ -280,20 +167,87 @@ export function submitCode(
   return { pass, results };
 }
 
+/**
+ * Measures, never assumes. For every clue it tries all ten digits at its seat against three
+ * different fillings of the other seats (the result must not change: the clue really is
+ * independent). Then per seat it counts the digits that satisfy every clue about that seat, and the
+ * number of full codes is the product of those counts (seats are independent). Removing a clue
+ * frees its seat back to ten digits. Nothing here walks all 10^8 codes.
+ */
 export function verifyPuzzle(puzzle: Puzzle): ProofReport {
   const b = built.get(puzzle);
   if (!b) throw new Error('Unknown puzzle');
-  const a = analyse(b.constraints);
-  const necessity = b.constraints.map((c, i) => ({
-    clueId: c.clueId,
-    solutionsWithout: a.without[i],
-  }));
+
+  const fills = [0, 5, 9];
+  let checks = 0;
+  let independent = true;
+  const passing: boolean[][] = b.constraints.map((c) =>
+    Array.from({ length: 10 }, (_, digit) => {
+      const outcomes = fills.map((fill) => {
+        const d = new Array<number>(CODE_LENGTH).fill(fill);
+        d[c.seat] = digit;
+        checks++;
+        return c.check(d);
+      });
+      if (new Set(outcomes).size !== 1) independent = false;
+      return outcomes[0];
+    }),
+  );
+
+  const perSeat = Array.from({ length: CODE_LENGTH }, (_, seat) => {
+    let count = 10;
+    b.constraints.forEach((c, i) => {
+      if (c.seat === seat) count = Math.min(count, passing[i].filter(Boolean).length);
+    });
+    return count;
+  });
+  const everySeatCovered = new Set(b.constraints.map((c) => c.seat)).size === CODE_LENGTH;
+  const product = (counts: number[]): number => counts.reduce((a, n) => a * n, 1);
+
+  const solutions = independent && everySeatCovered ? product(perSeat) : 0;
+  const necessity = b.constraints.map((c) => {
+    const others = perSeat.slice();
+    const sameSeat = b.constraints.some((o) => o !== c && o.seat === c.seat);
+    if (!sameSeat) others[c.seat] = 10;
+    return { clueId: c.clueId, solutionsWithout: product(others) };
+  });
+
   return {
     seed: puzzle.seed,
-    candidates: SPACE,
-    solutions: a.solutions,
+    candidates: 10 ** CODE_LENGTH,
+    checks,
+    solutions,
     necessity,
-    unique: a.solutions === 1,
+    unique: solutions === 1,
     allNecessary: necessity.every((n) => n.solutionsWithout > 1),
   };
+}
+
+/**
+ * The seat and digit a station spells out once its whole clue has been read. Parsed from the clue
+ * text the player has already seen, so it reveals nothing new.
+ */
+export function stationDigit(clueId: ClueId, observation: string): { seat: number; digit: number } | null {
+  const find = (re: RegExp, pick: (m: RegExpExecArray) => [number, number]): { seat: number; digit: number } | null => {
+    const m = re.exec(observation);
+    if (!m) return null;
+    const [seat, digit] = pick(m);
+    return { seat, digit };
+  };
+  switch (clueId) {
+    case 'party-table':
+      return find(/Seat (\d)'s card shows (?:an empty candle holder|(\d+) candles?)/, (m) => [Number(m[1]), m[2] === undefined ? 0 : Number(m[2])]);
+    case 'lobby-display':
+      return find(/Seat (\d)"[\s\S]*It holds (\d+) guest figures?/, (m) => [Number(m[1]), Number(m[2])]);
+    case 'missing-poster':
+      return find(/place (\d)[\s\S]*corner: (\d)\./, (m) => [Number(m[1]), Number(m[2])]);
+    case 'radio':
+      return find(/repeats (?:one long silence|(\d+) short pulses?)[\s\S]*"Seat (\d)"/, (m) => [Number(m[2]), m[1] === undefined ? 0 : Number(m[1])]);
+    case 'plaque':
+      return find(/Seat (\d) came with (\d+) guests?/, (m) => [Number(m[1]), Number(m[2])]);
+    case 'wall-calendar':
+    case 'ticket-stub':
+    case 'service-panel':
+      return find(/"Seat (\d) is (\d)\."/, (m) => [Number(m[1]), Number(m[2])]);
+  }
 }

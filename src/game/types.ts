@@ -49,8 +49,10 @@ export interface SubmissionResult {
 /** Measured solver output. The UI proof panel must print these numbers, not literals. */
 export interface ProofReport {
   seed: string;
-  /** Size of the enumerated space (1,000,000 for six digits). */
+  /** Size of the code space (10^8 for eight digits). */
   candidates: number;
+  /** Number of single-digit clue checks the verifier actually ran. */
+  checks: number;
   /** Count of codes satisfying all constraints. Must be 1. */
   solutions: number;
   /** For each constraint removed in turn, how many codes then satisfy the rest. Each must be > 1. */
@@ -72,9 +74,9 @@ export interface ChimeState {
 export interface RulesApi {
   /** Same seed => same puzzle. */
   createPuzzle(seed: string): Puzzle;
-  /** Full six-digit attempt only. Never reveals the code. */
+  /** Full eight-digit attempt only. Never reveals the code. */
   submitCode(puzzle: Puzzle, attempt: string, found: ReadonlySet<ClueId>): SubmissionResult;
-  /** Brute-forces 10^6 candidates. Synchronous; call after load or from the proof panel. */
+  /** Measures per-seat independence, uniqueness and necessity (no walk of all 10^8 codes). Fast and synchronous. */
   verifyPuzzle(puzzle: Puzzle): ProofReport;
   /** UTC daily seed, e.g. "2026-10-23". */
   dailySeed(date?: Date): string;

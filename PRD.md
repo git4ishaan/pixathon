@@ -7,7 +7,7 @@
 ## 0. Product decisions
 
 - One polished, replayable lift puzzle ships before any multi-level campaign or lore minigame.
-- The code is six digits and is generated from a puzzle seed. It is a fictional game code, never a real credential.
+- The code is eight digits (one per clue) and is generated from a puzzle seed. Each clue names one seat and its digit independently: no sums, comparisons or clue-to-clue dependencies (decision, 2026-10-23). It is a fictional game code, never a real credential.
 - Players solve from observations found in the room. The UI does not state the constraint or answer when a clue is found.
 - The setting is a closed department store and its service elevator. The art uses clockwork, brass, paper records, and empty retail spaces; avoid the visual language of an arcade mascot horror game.
 - AI use is visible through a truthful solver-proof panel backed by `bun run validate`; no live model or API key ships in the game.
@@ -32,7 +32,7 @@ Vale's Department Store, Sunnyday Plaza, closed in June 1987. The player is the 
 1. Title screen shows the game name, goal line, “Contains a jumpscare,” and mute control.
 2. The player enters one department-store lift lobby with eight clickable clue objects. The first clue pulses.
 3. Found clues add raw observations to an evidence log. Some evidence needs another clue to interpret.
-4. The player enters a six-digit code using a custom on-screen numeric keypad: digits 0–9, delete, clear, and submit. Do not rely on browser or Phaser text input.
+4. The player enters an eight-digit code using a custom on-screen numeric keypad: digits 0–9, delete, clear, and submit. Do not rely on browser or Phaser text input.
 5. After a complete submission, show pass/fail feedback for discovered clues. Do not reveal constraint status on each keypress.
 6. A wrong submission costs 10 seconds and advances Chime one patrol step. When Chime occupies an object's area, that clue is temporarily unavailable; players choose another clue or wait for an opening.
 7. The timer is three minutes. Chime starts away from the lift and makes no timer-driven move during the first 30 seconds. Later moves are visible and tied to fixed patrol points.
@@ -46,7 +46,7 @@ Eight objects provide eight necessary constraints. Their UI text describes what 
 
 | Object | Observation role | Link to other evidence |
 |---|---|---|
-| Party table | Six numbered place settings establish the code's structure | Introduces the event's numbering scheme |
+| Party table | Eight numbered place settings establish the code's structure | Introduces the event's numbering scheme |
 | Lobby display | Three stationary figures have display markers; Chime has a staff badge | Removes ambiguity about which figures are counted |
 | Missing poster | Mia's record contains a date and an identifier | The identifier is interpreted using the store's own index clue |
 | Wall calendar | Current June 1987 calendar beside a stale May 1986 copy | The store plaque/date identifies the stale page as a red herring |
@@ -59,7 +59,7 @@ Mitansh must produce a worked seed before implementation is called complete. For
 
 The validator must, for every fixed regression seed:
 
-1. Enumerate the six-digit candidate space and prove exactly one code satisfies all constraints.
+1. Measure that every clue depends on one seat only, then count the codes (of 10^8) that satisfy all clues: exactly one.
 2. Remove each constraint in turn and prove that more than one candidate then satisfies the remaining constraints.
 3. Report the seeds checked, candidate counts, unique-solution result, and necessity result. UI proof text must come from these measured results, never a hard-coded claim.
 
@@ -97,7 +97,7 @@ Publish the existing Vite shell to GitHub Pages. Confirm the deployed URL, asset
 
 ### Tier 1 — playable puzzle
 
-One room, eight linked clues, seeded six-digit code, observation log, numeric keypad, live-after-submit rule feedback, wrong-code penalty, Chime patrol, timer, win/lose, restart, and working phone input.
+One room, eight linked clues, seeded eight-digit code, observation log, numeric keypad, live-after-submit rule feedback, wrong-code penalty, Chime patrol, timer, win/lose, restart, and working phone input.
 
 ### Tier 2 — presentation
 
