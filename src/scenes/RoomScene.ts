@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE, reducedMotion } from '../config';
+import { Keypad } from '../keypad';
 import { addMuteToggle } from '../ui';
 
 const HEADER_HEIGHT = 64;
@@ -39,6 +40,7 @@ export class RoomScene extends Phaser.Scene {
   private boxes = new Map<string, Phaser.GameObjects.Rectangle>();
   private pulse?: Phaser.Tweens.Tween;
   private popup?: Phaser.GameObjects.Container;
+  private keypad?: Keypad;
 
   constructor() {
     super('RoomScene');
@@ -54,11 +56,14 @@ export class RoomScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(PALETTE.ink);
     this.drawLayout();
     this.drawHotspots();
+    this.keypad = new Keypad(this, RAIL_X, HEADER_HEIGHT);
     addMuteToggle(this, GAME_WIDTH - 8, 6);
 
     this.input.keyboard?.on('keydown-ESC', this.closePopup, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-ESC', this.closePopup, this);
+      this.keypad?.destroy();
+      this.keypad = undefined;
     });
   }
 
