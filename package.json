@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "validate": "npx tsx scripts/validate.ts"
+    "validate": "bun scripts/validate.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"
