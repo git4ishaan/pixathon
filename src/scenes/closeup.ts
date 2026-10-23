@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { sfx } from '../audio/sfx';
 import { PALETTE, reducedMotion } from '../config';
 import { stationDigit } from '../game/rules';
+import { roomBackdrop } from './backdrop';
 import { assignFragments } from '../game/stations';
 import type { ClueId } from '../game/types';
 
@@ -597,7 +598,10 @@ export class Closeup {
     const assignment = assignFragments(opts.fragments.length, art.slots.length);
 
     this.root = scene.add.container(0, originY).setDepth(10);
-    const shade = scene.add.rectangle(0, 0, CLOSEUP_W, CLOSEUP_H, P.ink, 1).setOrigin(0).setInteractive();
+    // The room's art behind a dark wash, so the closeup is not a flat blue panel.
+    const backdrop = roomBackdrop(scene, 0, 0, CLOSEUP_W, CLOSEUP_H);
+    if (backdrop) this.root.add(backdrop);
+    const shade = scene.add.rectangle(0, 0, CLOSEUP_W, CLOSEUP_H, P.ink, backdrop ? 0.5 : 1).setOrigin(0).setInteractive();
     const border = scene.add.rectangle(0, 0, CLOSEUP_W, CLOSEUP_H).setOrigin(0).setStrokeStyle(3, P.lamp);
     this.root.add([shade, border]);
 

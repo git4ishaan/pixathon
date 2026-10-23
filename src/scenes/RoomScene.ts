@@ -9,6 +9,7 @@ import { completedIds, hasProgress, initStations, isComplete, revealFragments, r
 import type { StationsState } from '../game/stations';
 import { Keypad } from '../keypad';
 import { addMuteToggle } from '../ui';
+import { roomBackdrop } from './backdrop';
 import { Closeup } from './closeup';
 import { Atmosphere, ChimeSprite, openLiftDoors } from './roomFx';
 
@@ -181,7 +182,14 @@ export class RoomScene extends Phaser.Scene {
     if (this.textures.exists('room-bg')) {
       this.add.image(0, HEADER_HEIGHT, 'room-bg').setOrigin(0).setScale(4).setDepth(0);
     } else {
-      this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x211b2e).setOrigin(0);
+      // No room art yet: reuse the menu art, dimmed, instead of a flat blue fill.
+      const art = roomBackdrop(this, 0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT);
+      if (art) {
+        art.setDepth(0);
+        this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, PALETTE.ink, 0.3).setOrigin(0).setDepth(0);
+      } else {
+        this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x211b2e).setOrigin(0);
+      }
     }
     this.add.rectangle(RAIL_X, HEADER_HEIGHT, GAME_WIDTH - RAIL_X, GAME_HEIGHT - HEADER_HEIGHT, PALETTE.ink)
       .setOrigin(0)
@@ -470,7 +478,9 @@ export class RoomScene extends Phaser.Scene {
     const shade = this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x000000, 0.6)
       .setOrigin(0)
       .setInteractive();
-    const panel = this.add.rectangle(ROOM_W / 2, HEADER_HEIGHT + 215, 620, 400, PALETTE.ink).setStrokeStyle(3, PALETTE.lamp);
+    const art = roomBackdrop(this, 0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT);
+    if (art) shade.setFillStyle(0x000000, 0.15);
+    const panel = this.add.rectangle(ROOM_W / 2, HEADER_HEIGHT + 215, 620, 400, PALETTE.ink, art ? 0.55 : 1).setStrokeStyle(3, PALETTE.lamp);
     const title = this.add.text(ROOM_W / 2, HEADER_HEIGHT + 30, 'EVIDENCE LOG', {
       color: css(PALETTE.lamp),
       fontFamily: FONT,
@@ -489,7 +499,7 @@ export class RoomScene extends Phaser.Scene {
       fontSize: '11px',
     }).setOrigin(0.5);
     shade.on('pointerup', () => this.closeLog());
-    this.logPanel = this.add.container(0, 0, [shade, panel, title, body, hint]).setDepth(10);
+    this.logPanel = this.add.container(0, 0, art ? [art, shade, panel, title, body, hint] : [shade, panel, title, body, hint]).setDepth(10);
   }
 
   private closeLog(): void {
