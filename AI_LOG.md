@@ -100,3 +100,11 @@
 - Result: `src/keypad.ts` is now a 3x4 digit grid plus a full-width SUBMIT, 6 slots, DEL/CLR, 52px-tall keys. `setResult` shows per-clue pass/fail only after submit, and `setLocked`/`reset` cover end states and restart. `.github/workflows/deploy.yml` builds with bun and publishes `dist` on push to `main`. `src/audio/sfx.ts` has five tones and respects mute via `scene.sound.mute`.
 - Mistake caught: in my first draft of `setResult` I left a stray empty text object (created then immediately destroyed) from an abandoned layout idea. Caught on re-reading the diff before committing; removed. Separately, the peer message said bun was not installed here; it is (1.4.4 under `~/.bun/bin`), and `bun install --frozen-lockfile` was confirmed locally because the workflow depends on it.
 - Not verified: the 44 CSS px key size on a real phone (needs FIT scale >= ~0.85, so landscape phone), and the workflow has never run on GitHub.
+
+## Headless-Chrome playtest of room-loop (Claude Code, branch qa-room-loop)
+- Prompt: Playtest a full round in a browser (puppeteer-core driving installed Chrome, 1280x720, time-warped clock), fix room-loop bugs, wire Web Audio cues.
+- Result: Win, wrong code (-10 s, Chime step), caught + jumpscare (900 ms, one dim, no flashing) and Try again (fresh seed) all work with a clean console on seeds LASTLIFT, MIA-1987, VALE.
+- Mistake caught by the playtest: a wrong code at 0:53 moved Chime two steps (office to lift lobby). The 10 s penalty reduced `remainingMs`, and timer steps were derived from `TIME_LIMIT_MS - remainingMs`, so the penalty also crossed the 60 s timer step. Fixed with a separate `elapsedMs`.
+- Other fixes: the "Wrong code" banner was overwritten by the Chime banner in the same frame (now one message); SUBMIT with fewer than 6 digits did nothing (empty slots now flash red); keypad slot outline was clipped under the header bar; keys raised to 62 px; sfx wired for key click, wrong buzz, Chime bell, win and scare sting.
+- Test artifact, not a bug: typing six digits in one frame (puppeteer `keyboard.type` with no delay) garbles the code because Phaser queues key events per frame. Delay >= 20 ms is fine; a human cannot type that fast.
+- Not run: real phone, portrait layout, audible check of the sfx (headless).

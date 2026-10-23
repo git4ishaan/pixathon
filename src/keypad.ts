@@ -1,25 +1,28 @@
 import Phaser from 'phaser';
+import { keyClick } from './audio/sfx';
 import { PALETTE } from './config';
 import type { ClueId, SubmissionResult } from './game/types';
 
 const CODE_LENGTH = 6;
 const WIDTH = 280;
 const SLOT_W = 40;
-const SLOT_H = 44;
+const SLOT_H = 40;
+const SLOT_TOP = 3; // keeps the slot outline clear of the header bar
 const SLOT_GAP = (WIDTH - CODE_LENGTH * SLOT_W) / (CODE_LENGTH - 1);
 
-// 3 columns x 4 rows plus a full-width submit. Keys are 52 canvas px tall: the
-// canvas is FIT-scaled, so a phone in landscape (>= ~0.85x) keeps them >= 44 CSS px.
+// 3 columns x 4 rows plus a full-width submit. Keys are 62 canvas px tall: the canvas is
+// FIT-scaled, so they reach 44 CSS px once the scale is >= ~0.71 (a landscape phone at
+// least ~384 CSS px tall). Portrait phones are not handled yet.
 const COLS = 3;
-const KEY_GAP = 4;
+const KEY_GAP = 2;
 const KEY_W = (WIDTH - KEY_GAP * (COLS - 1)) / COLS;
-const KEY_H = 52;
-const KEYS_TOP = SLOT_H + 8;
+const KEY_H = 62;
+const KEYS_TOP = SLOT_TOP + SLOT_H + 4;
 const SUBMIT_TOP = KEYS_TOP + 4 * (KEY_H + KEY_GAP);
 
-const NOTE_TOP = SUBMIT_TOP + KEY_H + 6;
-const RESULT_TOP = NOTE_TOP + 30;
-const RESULT_ROW_H = 16;
+const NOTE_TOP = SUBMIT_TOP + KEY_H + 4;
+const RESULT_TOP = NOTE_TOP + 18;
+const RESULT_ROW_H = 14;
 const RESULT_COL_W = WIDTH / 2;
 
 const PASS_COLOR = '#6fcf7f';
@@ -93,7 +96,7 @@ export class Keypad extends Phaser.GameObjects.Container {
       const row = Math.floor(i / 2);
       const t = this.scene.add.text(
         col * RESULT_COL_W,
-        RESULT_TOP + 16 + row * RESULT_ROW_H,
+        RESULT_TOP + 14 + row * RESULT_ROW_H,
         `${r.ok ? '+' : 'x'} ${clueName(r.clueId)}`,
         { color: r.ok ? PASS_COLOR : FAIL_COLOR, fontFamily: FONT, fontSize: '11px' },
       );
@@ -105,9 +108,9 @@ export class Keypad extends Phaser.GameObjects.Container {
   private buildDisplay(): void {
     for (let i = 0; i < CODE_LENGTH; i++) {
       const cx = i * (SLOT_W + SLOT_GAP) + SLOT_W / 2;
-      const box = this.scene.add.rectangle(cx, SLOT_H / 2, SLOT_W, SLOT_H, PALETTE.ink)
+      const box = this.scene.add.rectangle(cx, SLOT_TOP + SLOT_H / 2, SLOT_W, SLOT_H, PALETTE.ink)
         .setStrokeStyle(2, PALETTE.muted);
-      const text = this.scene.add.text(cx, SLOT_H / 2, '', {
+      const text = this.scene.add.text(cx, SLOT_TOP + SLOT_H / 2, '', {
         color: hex(PALETTE.lamp),
         fontFamily: FONT,
         fontSize: '28px',
@@ -177,17 +180,27 @@ export class Keypad extends Phaser.GameObjects.Container {
 
   private press(action: KeyAction): void {
     if (this.locked) return;
+    keyClick(this.scene);
     if (action === 'delete') {
       this.code = this.code.slice(0, -1);
     } else if (action === 'clear') {
       this.code = '';
     } else if (action === 'submit') {
       if (this.code.length === CODE_LENGTH) this.submitCb(this.code);
+      else this.flashIncomplete();
       return;
     } else if (this.code.length < CODE_LENGTH) {
       this.code += action.digit;
     }
     this.refreshDisplay();
+  }
+
+  /** Submit pressed before six digits: outline the empty slots so it is clear why nothing happened. */
+  private flashIncomplete(): void {
+    for (let i = this.code.length; i < CODE_LENGTH; i++) this.slotBoxes[i].setStrokeStyle(2, PALETTE.danger);
+    this.scene.time.delayedCall(400, () => {
+      if (this.active) this.refreshDisplay();
+    });
   }
 
   private refreshDisplay(): void {

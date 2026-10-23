@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { chimeBell, scareSting, winJingle, wrongBuzz } from '../audio/sfx';
 import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE, reducedMotion } from '../config';
 import { advanceChime, initChime, isClueLocked, TIMER_STEPS_MS } from '../game/chime';
 import { createPuzzle, freshSeed, submitCode } from '../game/rules';
@@ -44,6 +45,8 @@ export class RoomScene extends Phaser.Scene {
   private chimeState!: ChimeState;
   private nextTimerStep = 0;
   private remainingMs = TIME_LIMIT_MS;
+  /** Real play time. Separate from remainingMs so the wrong-code penalty cannot trigger timer steps. */
+  private elapsedMs = 0;
   private running = false;
   private found = new Set<ClueId>();
   private hotspots = new Map<ClueId, HotspotView>();
@@ -73,6 +76,7 @@ export class RoomScene extends Phaser.Scene {
     this.chimeState = initChime();
     this.nextTimerStep = 0;
     this.remainingMs = TIME_LIMIT_MS;
+    this.elapsedMs = 0;
     this.running = true;
     this.found = new Set();
     this.hotspots = new Map();
@@ -107,10 +111,11 @@ export class RoomScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.running) return;
     this.remainingMs = Math.max(0, this.remainingMs - delta);
+    this.elapsedMs += delta;
     this.timerText.setText(this.formatTime(this.remainingMs));
     if (this.remainingMs <= 30_000) this.timerText.setColor(css(PALETTE.danger));
 
-    const elapsed = TIME_LIMIT_MS - this.remainingMs;
+    const elapsed = this.elapsedMs;
     while (this.running && this.nextTimerStep < TIMER_STEPS_MS.length && elapsed >= TIMER_STEPS_MS[this.nextTimerStep]) {
       this.nextTimerStep += 1;
       this.moveChime('timer');
@@ -394,7 +399,9 @@ export class RoomScene extends Phaser.Scene {
       this.finish('caught');
       return;
     }
-    this.showBanner(`Chime moves to the ${AREA_LABEL[this.chimeState.point].toLowerCase()}.`);
+    chimeBell(this);
+    const moved = `Chime moves to the ${AREA_LABEL[this.chimeState.point].toLowerCase()}.`;
+    this.showBanner(reason === 'wrong-code' ? `Wrong code. -10 seconds. ${moved}` : moved);
   }
 
   private refreshChime(): void {
@@ -426,7 +433,7 @@ export class RoomScene extends Phaser.Scene {
     }
     this.remainingMs = Math.max(0, this.remainingMs - WRONG_CODE_PENALTY_MS);
     this.timerText.setText(this.formatTime(this.remainingMs));
-    this.showBanner('Wrong code. -10 seconds.');
+    wrongBuzz(this);
     this.moveChime('wrong-code');
   }
 
@@ -441,6 +448,7 @@ export class RoomScene extends Phaser.Scene {
     this.pulse?.stop();
     const data = { outcome: outcome === 'win' ? 'win' : 'lose', seed: this.seed };
     if (outcome === 'win') {
+      winJingle(this);
       this.time.delayedCall(400, () => this.scene.start('EndScene', data));
       return;
     }
@@ -449,6 +457,7 @@ export class RoomScene extends Phaser.Scene {
 
   /** At most one second, a single red flash (never faster than 3 per second), calm when reduced motion is on. */
   private playJumpscare(done: () => void): void {
+    scareSting(this);
     const calm = reducedMotion();
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
