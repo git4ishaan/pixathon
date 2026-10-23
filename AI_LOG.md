@@ -157,3 +157,10 @@
 - Result: `prop-wall-calendar`, `prop-radio`, `prop-ticket-stub`, `prop-plaque` (48x48, each with a `-glow` halo variant) and `room-bg` (170x119, shown at 4x): lobby with ceiling lamps, wainscot, checkered floor and a closed lift. BootScene picks them up from `public/assets` with no code change. Checked in headless Chrome at 960x540: all eight props render and hotspots line up, no console errors.
 - Mistake caught: the first room-bg draw wrote translucent light cones straight onto an opaque image, which replaces pixels instead of blending them; viewing an upscaled contact sheet before wiring it in showed the problem and the lamp light now goes through an overlay layer and `alpha_composite`.
 - Not done: no glow variants for Ishaan's four props, and the lift-door animation overlay still needs retuning to the lift alcove (around x 528-664, y 160-348).
+
+## Aarush: lift doors on win
+- Prompt: Work on the lift thing: the win animation was misplaced against the lift.
+- Tool: Claude Code (Sonnet 5.5), headless Chrome frames.
+- Result: `openLiftDoors` in `roomFx.ts` now matches the lift alcove painted into room-bg (x 528-664, y 160-348): warm light fades in, two brass door panels slide outward and squeeze flat, light spills onto the floor, then the end screen after about 2.2s. One slow fade, no flashing; reduced motion jumps straight to the open state.
+- Mistake caught: the first attempt only moved the old overlay constant, but screenshots showed the old overlay was a different size from the alcove doors; it was rebuilt panel for panel from the room-bg geometry instead.
+- Not verified: the middle of the slide. Headless Chrome frame timing only caught the lit end state.
