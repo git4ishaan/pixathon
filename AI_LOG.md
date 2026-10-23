@@ -79,3 +79,10 @@
 - Prompt: Build the keypad + live checklist as a standalone `src/keypad.ts` (6-slot display, 0-9/A-Z/#*! buttons, backspace, enter, physical keyboard, demo-only note, `setRules`), without touching RoomScene.
 - Tool: Claude Code (Sonnet 5.5), on branch `keypad-ui`, requested by Aarush's Claude session.
 - Result: Added `Keypad` container, 280×475, 7-column key grid. First typecheck failed: a `type()` method collided with `Container.type`, and `scene.add.existing(this)` needed a cast. Renamed to `typeChar` and fixed. Typecheck and build pass. Not yet checked visually in a browser; that needs RoomScene to mount it.
+
+## Aarush: round loop (room-loop branch)
+- Prompt: Build the playable round loop for the revised PRD: Chime patrol, seeded RoomScene with evidence log, jumpscare, EndScene (request relayed from the integration session).
+- Tool: Claude Code (Sonnet 5.5). Coordinated with two parallel Claude sessions over SendMessage: one reworked `src/keypad.ts` to the numeric submit-only API, one owns rules and the contract.
+- Result: `src/game/chime.ts` (pure patrol office -> corridor -> lift-lobby -> caught, timer steps 60/105/150s, area locks, party table never locked; sanity-checked with a bun script), `RoomScene.ts` driven by `createPuzzle(seed)` with evidence strip and log overlay, locked-clue dimming, Chime indicator, -10s and a patrol step on a wrong code, jumpscare under 1s with a single flash and a reduced-motion variant, and `EndScene.ts` with win/lose lore, a proof panel printing `verifyPuzzle` output, and play again with a fresh seed.
+- Mistake caught: I first read `?seed=` on every `init`, so Try again would have replayed the same puzzle on a shared link; caught on review against the PRD rule "restart starts a fresh seed" and fixed with a first-run-only flag. Earlier, `git add -A` in the shared working tree staged another agent's untracked file, and that agent's commit swept up my staged files; I now commit explicit paths only.
+- Not yet done: browser playtest (no browser run so far), phone check, Web Audio cues for Chime moves, `?seed=` is first-run only.
