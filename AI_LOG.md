@@ -150,3 +150,11 @@
 - Tool: Claude Code (Sonnet 5.5), headless Chrome screenshot check.
 - Result: BootScene loads the props, Chime sprite and six audio files; props scale to the largest whole number that fits their hotspot; Chime scales from his 64px sprite; ambient loop, creak on every Chime step, radio static on the radio clue, jumpscare file on a loss, and Mitansh's SoundManager blips for keys, clues and wrong codes (gated on the mute toggle).
 - Mistake caught: merging Mitansh's sfx rewrite into main replaced the named sfx exports that RoomScene imported, so main failed typecheck and would have failed its deploy; found by running tsc right after the pull, fixed by moving RoomScene to the new `sfx` object.
+
+## Interactive closeups: sub-clicks and states (Claude Code, branch interactive-rooms)
+- Prompt: the user said each room needs sub-clicks and states instead of a text popup; implement per `.plans/room-zoom-stations-spec.md`.
+- Tool: Claude Code (Sonnet 5.5), checked in headless Chrome (puppeteer-core) on seed LASTLIFT.
+- Result: clicking a prop opens a closeup with 3-4 tappable parts. Each part has idle, hover, pressed and revealed states, a tick when revealed, and its own animation (cards flip, cover swings open, corner peels, dial turns, ticket flips). Revealing a part adds its sentence of the clue to the evidence. A clue counts as found, and gets pass/fail on submit, only when all its parts are revealed; partial progress persists across leaving and re-entering. Pure logic is in `src/game/stations.ts`, checked by `scripts/stations.check.ts` (4 seeds, 32 stations, 0 failures). `rules.ts` is untouched.
+- Mistake caught: the first browser run threw "Cannot read properties of null (reading 'drawImage')". Cause: a delayed callback called `setText` on the closeup's text after the closeup was destroyed. Fixed with a destroyed flag and by stopping tweens and timers on destroy.
+- Also caught by looking at screenshots: candle bodies drawn in the card colour (invisible), paper hats overlapping the cards, calendar pages overlapping each other, and art overlapping the status line. All fixed.
+- Not done: bespoke decode steps from the spec (a station does not yet wait for the station it "needs"), sealed digits auto-filling the keypad, portrait phones, a real phone check, and audible check of the sfx.

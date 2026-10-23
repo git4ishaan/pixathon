@@ -5,8 +5,11 @@ import { advanceChime, initChime, isClueLocked, TIMER_STEPS_MS } from '../game/c
 import { createPuzzle, freshSeed, submitCode } from '../game/rules';
 import { CLUE_IDS } from '../game/types';
 import type { ChimeState, ClueId, ClueInstance, PatrolPoint, Puzzle } from '../game/types';
+import { completedIds, hasProgress, initStations, isComplete, revealFragments, revealedText, splitFragments } from '../game/stations';
+import type { StationsState } from '../game/stations';
 import { Keypad } from '../keypad';
 import { addMuteToggle } from '../ui';
+import { Closeup } from './closeup';
 import { Atmosphere, ChimeSprite, openLiftDoors } from './roomFx';
 
 const HEADER_HEIGHT = 64;
@@ -67,7 +70,8 @@ export class RoomScene extends Phaser.Scene {
   private found = new Set<ClueId>();
   private hotspots = new Map<ClueId, HotspotView>();
   private pulse?: Phaser.Tweens.Tween;
-  private popup?: Phaser.GameObjects.Container;
+  private stations!: StationsState;
+  private closeup?: Closeup;
   private logPanel?: Phaser.GameObjects.Container;
   private keypad?: Keypad;
   private chimeSprite?: ChimeSprite;
@@ -98,7 +102,8 @@ export class RoomScene extends Phaser.Scene {
     this.running = true;
     this.found = new Set();
     this.hotspots = new Map();
-    this.popup = undefined;
+    this.stations = initStations(this.puzzle);
+    this.closeup = undefined;
     this.logPanel = undefined;
     this.chimePips = [];
     this.chips = [];
@@ -117,7 +122,6 @@ export class RoomScene extends Phaser.Scene {
 
     const onEsc = (): void => {
       if (this.logPanel) this.closeLog();
-      else this.closePopup();
     };
     const onLog = (): void => this.toggleLog();
     this.input.keyboard?.on('keydown-ESC', onEsc);
@@ -135,6 +139,7 @@ export class RoomScene extends Phaser.Scene {
     if (!this.running) return;
     this.remainingMs = Math.max(0, this.remainingMs - delta);
     this.elapsedMs += delta;
+    this.closeup?.tick();
     this.timerText.setText(this.formatTime(this.remainingMs));
     if (this.remainingMs <= 30_000) this.timerText.setColor(css(PALETTE.danger));
 
@@ -336,11 +341,53 @@ export class RoomScene extends Phaser.Scene {
     this.blip(() => sfx.playClueFound());
     if (clue.id === 'radio') this.play('snd-radio', 0.5);
     this.nudge(clue.id);
-    if (!this.found.has(clue.id)) {
+    this.openCloseup(clue);
+  }
+
+  // ----------------------------------------------------------------- closeup
+
+  /** One station: tap its parts to reveal fragments. A clue counts as found once every fragment is revealed. */
+  private openCloseup(clue: ClueInstance): void {
+    this.closeCloseup();
+    this.closeLog();
+    this.closeup = new Closeup(
+      this,
+      {
+        clueId: clue.id,
+        title: clue.label,
+        observation: clue.observation,
+        fragments: splitFragments(clue.observation),
+        revealed: this.stations.get(clue.id)?.revealed ?? new Set<number>(),
+        needsNote: this.needsNote(clue),
+        onReveal: (indices: number[]): void => this.onReveal(clue, indices),
+        onClose: (): void => this.closeCloseup(),
+      },
+      HEADER_HEIGHT,
+    );
+    this.refreshEvidence();
+  }
+
+  private onReveal(clue: ClueInstance, indices: number[]): void {
+    this.stations = revealFragments(this.stations, clue.id, indices);
+    if (isComplete(this.stations, clue.id) && !this.found.has(clue.id)) {
       this.found.add(clue.id);
-      this.refreshEvidence();
+      this.blip(() => sfx.playClueFound());
     }
-    this.showPopup(clue);
+    this.refreshEvidence();
+  }
+
+  private closeCloseup(): void {
+    this.closeup?.destroy();
+    this.closeup = undefined;
+  }
+
+  private needsNote(clue: ClueInstance): string {
+    if (clue.needs.length === 0) return '';
+    const names = clue.needs.map((id) => {
+      const name = this.puzzle.clues.find((c) => c.id === id)?.label ?? id;
+      return `${name}${this.found.has(id) ? '' : ' (not complete yet)'}`;
+    });
+    return `Needs: ${names.join(', ')}`;
   }
 
   /** A short hop on the prop when it is inspected. */
@@ -373,13 +420,13 @@ export class RoomScene extends Phaser.Scene {
   }
 
   private refreshEvidence(): void {
-    this.evidenceTitle.setText(`EVIDENCE ${this.found.size}/${this.puzzle.clues.length}`);
+    this.evidenceTitle.setText(`EVIDENCE ${completedIds(this.stations).size}/${this.puzzle.clues.length} complete`);
     this.chips.forEach((c) => c.destroy());
     this.chips = [];
     let x = 12;
     let y = STRIP_Y + 26;
     for (const clue of this.puzzle.clues) {
-      if (!this.found.has(clue.id)) continue;
+      if (!hasProgress(this.stations, clue.id)) continue;
       const missing = clue.needs.filter((n) => !this.found.has(n));
       const chip = this.add.text(x, y, missing.length > 0 ? `${clue.label} (needs ${missing.length})` : clue.label, {
         color: css(missing.length > 0 ? PALETTE.muted : PALETTE.paper),
@@ -394,18 +441,18 @@ export class RoomScene extends Phaser.Scene {
         chip.setPosition(x, y);
       }
       x += chip.width + 8;
-      chip.on('pointerup', () => this.showPopup(clue));
+      chip.on('pointerup', () => this.inspect(clue));
       this.chips.push(chip);
     }
     for (const id of this.hotspots.keys()) this.styleBox(id);
   }
 
-  private observationBlock(clue: ClueInstance): string {
-    const needs = clue.needs.map((id) => {
-      const name = this.puzzle.clues.find((c) => c.id === id)?.label ?? id;
-      return `${name}${this.found.has(id) ? '' : ' (not found yet)'}`;
-    });
-    return needs.length > 0 ? `${clue.observation}\n\nNeeds: ${needs.join(', ')}` : clue.observation;
+  /** Revealed fragments only, plus the needs note once the station is complete. */
+  private evidenceBlock(clue: ClueInstance): string {
+    const frags = revealedText(this.stations, clue.id, splitFragments(clue.observation));
+    const total = splitFragments(clue.observation).length;
+    const note = isComplete(this.stations, clue.id) ? this.needsNote(clue) : `(${frags.length}/${total} details found)`;
+    return [frags.join(' '), note].filter((t) => t !== '').join('\n');
   }
 
   private toggleLog(): void {
@@ -414,10 +461,10 @@ export class RoomScene extends Phaser.Scene {
   }
 
   private showLog(): void {
-    this.closePopup();
+    this.closeCloseup();
     const lines = this.puzzle.clues
-      .filter((c) => this.found.has(c.id))
-      .map((c) => `${c.label.toUpperCase()}\n${this.observationBlock(c)}`);
+      .filter((c) => hasProgress(this.stations, c.id))
+      .map((c) => `${c.label.toUpperCase()}\n${this.evidenceBlock(c)}`);
     const text = lines.length > 0 ? lines.join('\n\n') : 'Nothing yet. Click the glowing object to start.';
     const shade = this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x000000, 0.6)
       .setOrigin(0)
@@ -449,49 +496,6 @@ export class RoomScene extends Phaser.Scene {
     this.logPanel = undefined;
   }
 
-  // ------------------------------------------------------------------- popup
-
-  private showPopup(clue: ClueInstance): void {
-    this.closePopup();
-    this.closeLog();
-    const width = 480;
-    const cx = ROOM_W / 2;
-    const cy = HEADER_HEIGHT + 215;
-    const shade = this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x000000, 0.5)
-      .setOrigin(0)
-      .setInteractive();
-    const title = this.add.text(cx, cy - 70, clue.label.toUpperCase(), {
-      color: css(PALETTE.lamp),
-      fontFamily: FONT,
-      fontSize: '16px',
-    }).setOrigin(0.5);
-    const body = this.add.text(cx, cy - 40, this.observationBlock(clue), {
-      color: css(PALETTE.paper),
-      fontFamily: FONT,
-      fontSize: '14px',
-      align: 'center',
-      lineSpacing: 3,
-      wordWrap: { width: width - 40 },
-    }).setOrigin(0.5, 0);
-    const panel = this.add.rectangle(cx, cy, width, Math.max(160, body.height + 110), PALETTE.ink)
-      .setStrokeStyle(3, PALETTE.lamp);
-    panel.setPosition(cx, cy - 40 + body.height / 2);
-    title.setY(panel.y - panel.height / 2 + 24);
-    body.setY(title.y + 22);
-    const hint = this.add.text(cx, panel.y + panel.height / 2 - 16, 'Click or press Esc to close', {
-      color: css(PALETTE.muted),
-      fontFamily: FONT,
-      fontSize: '11px',
-    }).setOrigin(0.5);
-    shade.on('pointerup', () => this.closePopup());
-    this.popup = this.add.container(0, 0, [shade, panel, title, body, hint]).setDepth(10);
-  }
-
-  private closePopup(): void {
-    this.popup?.destroy();
-    this.popup = undefined;
-  }
-
   // ------------------------------------------------------------------- chime
 
   private moveChime(reason: 'timer' | 'wrong-code'): void {
@@ -516,7 +520,7 @@ export class RoomScene extends Phaser.Scene {
       pip.setFillStyle(i === idx ? PALETTE.danger : i < idx ? 0x6b3434 : PALETTE.muted);
     });
     for (const id of this.hotspots.keys()) this.styleBox(id);
-    // A popup for a clue that just got locked stays readable; only new clicks are blocked.
+    // A closeup that is already open stays usable when its area gets locked; only new entries are blocked.
   }
 
   private showBanner(message: string): void {
@@ -547,7 +551,7 @@ export class RoomScene extends Phaser.Scene {
     if (!this.running) return;
     this.running = false;
     this.keypad?.setLocked(true);
-    this.closePopup();
+    this.closeCloseup();
     this.closeLog();
     this.pulse?.stop();
     const data = { outcome: outcome === 'win' ? 'win' : 'lose', seed: this.seed };

@@ -7,6 +7,13 @@ export const PALETTE = {
   lamp: 0xf2b84b,
   danger: 0xc64a4a,
   muted: 0x8e8495,
+  // Extra shades for the closeup art (src/scenes/closeup.ts).
+  night: 0x211b2e,
+  plum: 0x2d2540,
+  dusk: 0x4a3d5c,
+  brass: 0xb08d3c,
+  wood: 0x6b4a32,
+  blood: 0x6b3434,
 } as const;
 
 export const GOAL_LINE = 'Find the evidence, solve the lift code, and get out before Chime reaches you.';
