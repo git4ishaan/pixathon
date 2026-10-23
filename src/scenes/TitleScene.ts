@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GOAL_LINE, PALETTE } from '../config';
+import { GAME_HEIGHT, GAME_WIDTH, GOAL_LINE, PALETTE } from '../config';
 import { addMuteToggle } from '../ui';
 
 const FONT = 'Courier New, monospace';
@@ -9,8 +9,15 @@ export class TitleScene extends Phaser.Scene {
     super('TitleScene');
   }
 
+  preload(): void {
+    this.load.image('menu-background', `${import.meta.env.BASE_URL}assets/main_menu_bg.png`);
+  }
+
   create(): void {
     this.cameras.main.setBackgroundColor(PALETTE.ink);
+    this.add.image(0, 0, 'menu-background')
+      .setOrigin(0)
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
 
     this.add.text(84, 96, 'POCKET PALACE  /  1987', {
       color: '#8e8495', fontFamily: FONT, fontSize: '14px', letterSpacing: 1,
