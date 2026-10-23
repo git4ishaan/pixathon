@@ -358,6 +358,7 @@ export class RoomScene extends Phaser.Scene {
         observation: clue.observation,
         fragments: splitFragments(clue.observation),
         revealed: this.stations.get(clue.id)?.revealed ?? new Set<number>(),
+        origin: { x: clue.x, y: clue.y, w: clue.width, h: clue.height },
         needsNote: this.needsNote(clue),
         onReveal: (indices: number[]): void => this.onReveal(clue, indices),
         onClose: (): void => this.closeCloseup(),

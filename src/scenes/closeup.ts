@@ -541,6 +541,8 @@ export interface CloseupOptions {
   fragments: readonly string[];
   /** Indices already revealed (persisted by the scene across re-entry). */
   revealed: ReadonlySet<number>;
+  /** Clicked hotspot in canvas px: the closeup zooms out of it. */
+  origin: { x: number; y: number; w: number; h: number };
   /** "Needs: ..." line, or empty. */
   needsNote: string;
   onReveal: (indices: number[]) => void;
@@ -677,6 +679,28 @@ export class Closeup {
     this.refreshText();
 
     scene.input.keyboard?.on('keydown-ESC', this.onKey);
+    this.zoomIn(originY);
+  }
+
+  /** Grow from the clicked prop to fill the room view. Instant when reduced motion is on. */
+  private zoomIn(originY: number): void {
+    if (reducedMotion()) return;
+    const o = this.opts.origin;
+    const k = Math.max(o.h / CLOSEUP_H, 0.2);
+    const x0 = o.x - (CLOSEUP_W * k) / 2;
+    const y0 = o.y - (CLOSEUP_H * k) / 2;
+    this.root.setScale(k).setPosition(x0, y0).setAlpha(0.2);
+    this.counters.push(
+      this.scene.tweens.add({
+        targets: this.root,
+        scale: 1,
+        x: 0,
+        y: originY,
+        alpha: 1,
+        duration: 260,
+        ease: 'Cubic.easeOut',
+      }),
+    );
   }
 
   /** Called every frame by the scene so flicker animations (radio) keep moving. */
