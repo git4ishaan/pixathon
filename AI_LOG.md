@@ -53,3 +53,18 @@
 - Result: Reframed the setting as Vale's 1987 department store, made Chime a clockwork lift attendant, changed the puzzle spec to seeded six-digit codes and touch keypad input, made clues observation-only with explicit dependencies/red-herring resolution, required uniqueness plus per-rule necessity proofs, and added wrong-entry penalties that move Chime and affect clue access. Added honest solver-proof UI requirements, GitHub Pages shell verification, strict merge gates, Web Audio-only scope, and deferred multi-room/minigame work. Updated the goal line and title label. The current arcade-style menu background remains temporary and must be replaced by Soham's art direction.
 - Ownership update: Mitansh builds the seeded generator/rules/validator; Aarush builds the evidence UI, numeric keypad, timer, patrol, and outcomes; Ishaan makes separate department-store backgrounds and props; Soham approves and supplies the visual direction; Codex integrates/reviews and runs checks.
 - Next: Mitansh should produce one worked seed with eight necessary deductions before coding the generator; Aarush should agree on the clue-data interface with Mitansh before wiring RoomScene.
+## Mitansh — Rule engine, clue data, and validator (branch: mitansh)
+- Prompt: Analyse tasks from PRD and AI_LOG, build work into phases, create a branch `mitansh`, and start working.
+- Tool: Antigravity (read PRD.md, AI_LOG.md, ROOM_BLOCKOUT.md, all src files; wrote src/game/rules.ts, src/data/clues.ts, src/store.ts, scripts/validate.ts; updated package.json and tsconfig.json; ran typecheck and validate).
+- Result: Implemented all Mitansh-assigned files from the AI_LOG team split.
+  - `src/game/rules.ts`: 8 `Rule` objects matching PRD §6 — length, first-digit-3, second-letter-M, last-digit-6, fourth-char-#, digit-sum-21, no-repeat, flanking-5-7 — plus `evaluate()` for live keypad feedback and `prefixOk()` for partial-code highlighting. Pure TypeScript, no Phaser imports.
+  - `src/data/clues.ts`: 8 `Clue` records with exact centres from ROOM_BLOCKOUT.md (120×132 hot-spots), narrative clue text tied to each rule, and `pulse: true` on the party table.
+  - `src/store.ts`: localStorage wrapper with try/catch on every read/write; tracks `loreIndex` and `attempts`.
+  - `scripts/validate.ts`: pruned brute-force (position-fixed search) enumerates all legal 6-char codes and asserts exactly one passes all 8 rules.
+  - `package.json`: added `validate` script (`npx tsx scripts/validate.ts`).
+  - `tsconfig.json`: extended `include` to cover `scripts/`, added `@types/node` for `process.exit`.
+- Validator output: `PASS: exactly one valid passcode.` (found `3M5#76`; matches SECRET).
+- Typecheck: zero errors.
+- Mistake caught: The first validator draft imported `CHARSET` from rules.ts but the pruned validator defines its own candidates array, leaving `CHARSET` unused — a compile error under `noUnusedLocals`. Caught by `tsc --noEmit` and fixed by removing the stale import.
+- Branch `mitansh` pushed; PR: https://github.com/git4ishaan/pixathon/pull/new/mitansh
+
