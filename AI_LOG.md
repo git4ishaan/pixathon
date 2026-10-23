@@ -150,3 +150,33 @@
 - Tool: Claude Code (Sonnet 5.5), headless Chrome screenshot check.
 - Result: BootScene loads the props, Chime sprite and six audio files; props scale to the largest whole number that fits their hotspot; Chime scales from his 64px sprite; ambient loop, creak on every Chime step, radio static on the radio clue, jumpscare file on a loss, and Mitansh's SoundManager blips for keys, clues and wrong codes (gated on the mute toggle).
 - Mistake caught: merging Mitansh's sfx rewrite into main replaced the named sfx exports that RoomScene imported, so main failed typecheck and would have failed its deploy; found by running tsc right after the pull, fixed by moving RoomScene to the new `sfx` object.
+
+## Interactive closeups: sub-clicks and states (Claude Code, branch interactive-rooms)
+- Prompt: the user said each room needs sub-clicks and states instead of a text popup; implement per `.plans/room-zoom-stations-spec.md`.
+- Tool: Claude Code (Sonnet 5.5), checked in headless Chrome (puppeteer-core) on seed LASTLIFT.
+- Result: clicking a prop opens a closeup with 3-4 tappable parts. Each part has idle, hover, pressed and revealed states, a tick when revealed, and its own animation (cards flip, cover swings open, corner peels, dial turns, ticket flips). Revealing a part adds its sentence of the clue to the evidence. A clue counts as found, and gets pass/fail on submit, only when all its parts are revealed; partial progress persists across leaving and re-entering. Pure logic is in `src/game/stations.ts`, checked by `scripts/stations.check.ts` (4 seeds, 32 stations, 0 failures). `rules.ts` is untouched.
+- Mistake caught: the first browser run threw "Cannot read properties of null (reading 'drawImage')". Cause: a delayed callback called `setText` on the closeup's text after the closeup was destroyed. Fixed with a destroyed flag and by stopping tweens and timers on destroy.
+- Also caught by looking at screenshots: candle bodies drawn in the card colour (invisible), paper hats overlapping the cards, calendar pages overlapping each other, and art overlapping the status line. All fixed.
+- Not done: bespoke decode steps from the spec (a station does not yet wait for the station it "needs"), sealed digits auto-filling the keypad, portrait phones, a real phone check, and audible check of the sfx.
+
+## Eight-digit code, one independent digit per clue (Claude Code, branch interactive-rooms)
+- Prompt (user): "make sure that each clue independently gives one digit of the code, don't make it too complex". After asking, the user chose an 8-digit code with one digit per prop (not 6 digits with decoys).
+- Tool: Claude Code (Sonnet 5.5). Peers `pixathon-4f` and `pixathon-0f` agreed not to edit rules.ts/types.ts/validate.ts in parallel.
+- Result: `rules.ts` was rewritten. Each of the eight props names one seat (1-8, shuffled per seed) and its digit in plain words; no sums, differences or needs. The generator is constructive, so it cannot fail to produce a puzzle. `verifyPuzzle` measures instead of assuming: it tests all ten digits at each clue's seat against three fillings of the other seats (must not change), counts per-seat solutions, and multiplies (1 of 10^8); removing any clue leaves 10 codes. It does not walk 10^8 codes. `validate` passes on 31 seeds; `scripts/stations.check.ts` also checks that the digits each clue states spell the real code.
+- UI: keypad now has 8 slots; closeup party table has 8 cards; each finished closeup shows a large "SEAT n = digit" line; untapped parts glow so it is clear what to tap. Polish from the better-ui skill adapted to the canvas: press scale 0.96 over 150 ms, hover styling skipped on touch, 150 ms fade-out exit, reduced motion uses a cross-fade, drawn check badges.
+- Caught: a regex in my patch script silently lost a backslash and the replacement failed ("miss"), so nothing had been written; I switched those edits to direct file edits and re-ran. Also caught on the first screenshot: the first keypad slot was clipped by the rail border (added a 2 px inset).
+- Not done: a real phone, audible check of sfx, portrait layout. PRD updated only where it said six digits.
+
+## Aarush: generated pixel art for the missing props and the room
+- Prompt: Generate pixel art for the rooms Ishaan has not made yet.
+- Tool: Claude Code (Sonnet 5.5) writing a Python/Pillow generator (`scripts/gen_art.py`); no image model was available, so everything is drawn pixel by pixel in code with the game palette.
+- Result: `prop-wall-calendar`, `prop-radio`, `prop-ticket-stub`, `prop-plaque` (48x48, each with a `-glow` halo variant) and `room-bg` (170x119, shown at 4x): lobby with ceiling lamps, wainscot, checkered floor and a closed lift. BootScene picks them up from `public/assets` with no code change. Checked in headless Chrome at 960x540: all eight props render and hotspots line up, no console errors.
+- Mistake caught: the first room-bg draw wrote translucent light cones straight onto an opaque image, which replaces pixels instead of blending them; viewing an upscaled contact sheet before wiring it in showed the problem and the lamp light now goes through an overlay layer and `alpha_composite`.
+- Not done: no glow variants for Ishaan's four props, and the lift-door animation overlay still needs retuning to the lift alcove (around x 528-664, y 160-348).
+
+## Aarush: lift doors on win
+- Prompt: Work on the lift thing: the win animation was misplaced against the lift.
+- Tool: Claude Code (Sonnet 5.5), headless Chrome frames.
+- Result: `openLiftDoors` in `roomFx.ts` now matches the lift alcove painted into room-bg (x 528-664, y 160-348): warm light fades in, two brass door panels slide outward and squeeze flat, light spills onto the floor, then the end screen after about 2.2s. One slow fade, no flashing; reduced motion jumps straight to the open state.
+- Mistake caught: the first attempt only moved the old overlay constant, but screenshots showed the old overlay was a different size from the alcove doors; it was rebuilt panel for panel from the room-bg geometry instead.
+- Not verified: the middle of the slide. Headless Chrome frame timing only caught the lit end state.

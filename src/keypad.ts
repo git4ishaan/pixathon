@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
-import { PALETTE } from './config';
+import { PALETTE, reducedMotion } from './config';
 import type { ClueId, SubmissionResult } from './game/types';
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 const WIDTH = 280;
-const SLOT_W = 40;
+const SLOT_W = 30;
 const SLOT_H = 40;
 const SLOT_TOP = 3; // keeps the slot outline clear of the header bar
-const SLOT_GAP = (WIDTH - CODE_LENGTH * SLOT_W) / (CODE_LENGTH - 1);
+const SLOT_INSET = 2; // keeps the outer slot outlines off the rail border
+const SLOT_GAP = (WIDTH - 2 * SLOT_INSET - CODE_LENGTH * SLOT_W) / (CODE_LENGTH - 1);
 
 // 3 columns x 4 rows plus a full-width submit. Keys are 62 canvas px tall: the canvas is
 // FIT-scaled, so they reach 44 CSS px once the scale is >= ~0.71 (a landscape phone at
@@ -112,13 +113,13 @@ export class Keypad extends Phaser.GameObjects.Container {
 
   private buildDisplay(): void {
     for (let i = 0; i < CODE_LENGTH; i++) {
-      const cx = i * (SLOT_W + SLOT_GAP) + SLOT_W / 2;
+      const cx = SLOT_INSET + i * (SLOT_W + SLOT_GAP) + SLOT_W / 2;
       const box = this.scene.add.rectangle(cx, SLOT_TOP + SLOT_H / 2, SLOT_W, SLOT_H, PALETTE.ink)
         .setStrokeStyle(2, PALETTE.muted);
       const text = this.scene.add.text(cx, SLOT_TOP + SLOT_H / 2, '', {
         color: hex(PALETTE.lamp),
         fontFamily: FONT,
-        fontSize: '28px',
+        fontSize: '24px',
         fontStyle: 'bold',
       }).setOrigin(0.5);
       this.add([box, text]);
@@ -158,10 +159,22 @@ export class Keypad extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
 
     box.on('pointerover', () => box.setFillStyle(isDigit ? PALETTE.lamp : PALETTE.paper));
-    box.on('pointerout', () => box.setFillStyle(base));
-    box.on('pointerdown', () => box.setFillStyle(PALETTE.muted));
+    box.on('pointerout', () => {
+      box.setFillStyle(base);
+      squish(1);
+    });
+    // Pressed keys shrink to 0.96 over 150 ms, unless locked or reduced motion is on.
+    const squish = (scale: number): void => {
+      if (reducedMotion() || this.locked) return;
+      this.scene.tweens.add({ targets: [box, text], scale, duration: 150, ease: 'Sine.easeOut' });
+    };
+    box.on('pointerdown', () => {
+      box.setFillStyle(PALETTE.muted);
+      squish(0.96);
+    });
     box.on('pointerup', () => {
       box.setFillStyle(base);
+      squish(1);
       this.press(action);
     });
     this.add([box, text]);
@@ -177,6 +190,7 @@ export class Keypad extends Phaser.GameObjects.Container {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    if (!this.visible) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.key === 'Backspace') this.press('delete');
     else if (event.key === 'Enter') this.press('submit');
@@ -200,7 +214,7 @@ export class Keypad extends Phaser.GameObjects.Container {
     this.refreshDisplay();
   }
 
-  /** Submit pressed before six digits: outline the empty slots so it is clear why nothing happened. */
+  /** Submit pressed before all eight digits: outline the empty slots so it is clear why nothing happened. */
   private flashIncomplete(): void {
     for (let i = this.code.length; i < CODE_LENGTH; i++) this.slotBoxes[i].setStrokeStyle(2, PALETTE.danger);
     this.scene.time.delayedCall(400, () => {

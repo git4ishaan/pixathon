@@ -16,16 +16,16 @@ export interface ClueLayout {
   pulse?: boolean;
 }
 
-const W = 120;
-const H = 132;
+const W = 150;
+const H = 165;
 
 export const CLUE_LAYOUT: readonly ClueLayout[] = [
-  { id: 'party-table', label: 'Party Table', x: 130, y: 365, width: W, height: H, pulse: true },
-  { id: 'lobby-display', label: 'Lobby Display', x: 455, y: 350, width: W, height: H },
-  { id: 'missing-poster', label: 'Missing Poster', x: 100, y: 160, width: W, height: H },
-  { id: 'wall-calendar', label: 'Wall Calendar', x: 250, y: 160, width: W, height: H },
-  { id: 'radio', label: 'Radio', x: 400, y: 160, width: W, height: H },
-  { id: 'ticket-stub', label: 'Ticket Stub', x: 290, y: 380, width: W, height: H },
-  { id: 'plaque', label: 'Store Plaque', x: 550, y: 160, width: W, height: H },
-  { id: 'service-panel', label: 'Service Panel', x: 612, y: 315, width: W, height: H },
+  { id: 'party-table', label: 'Party Table', x: 183, y: 333, width: W, height: H, pulse: true },
+  { id: 'lobby-display', label: 'Lobby Display', x: 642, y: 319, width: W, height: H },
+  { id: 'missing-poster', label: 'Missing Poster', x: 141, y: 134, width: W, height: H },
+  { id: 'wall-calendar', label: 'Wall Calendar', x: 352, y: 134, width: W, height: H },
+  { id: 'radio', label: 'Radio', x: 564, y: 134, width: W, height: H },
+  { id: 'ticket-stub', label: 'Ticket Stub', x: 409, y: 348, width: W, height: H },
+  { id: 'plaque', label: 'Store Plaque', x: 776, y: 134, width: W, height: H },
+  { id: 'service-panel', label: 'Service Panel', x: 863, y: 285, width: W, height: H },
 ];

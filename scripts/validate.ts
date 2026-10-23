@@ -1,9 +1,9 @@
 /**
  * scripts/validate.ts
  *
- * For each seed: enumerate all 10^6 six-digit codes, prove exactly one satisfies every
- * constraint, and prove each constraint is necessary (removing it leaves more than one code).
- * Prints measured results and never prints a code.
+ * For each seed: measure that every clue depends only on its own seat, count the codes that satisfy
+ * every clue (must be exactly one of 10^8), and prove each clue is necessary (removing it leaves
+ * more than one code). Prints measured results and never prints a code.
  *
  * Run: bun run validate            (regression seeds + a sweep)
  *      bun run validate -- --sweep 200
@@ -33,7 +33,7 @@ for (const seed of seeds) {
     const ok = r.unique && r.allNecessary;
     if (!ok) failures++;
     console.log(
-      `${ok ? 'ok  ' : 'FAIL'} seed=${seed} candidates=${r.candidates} solutions=${r.solutions} ` +
+      `${ok ? 'ok  ' : 'FAIL'} seed=${seed} candidates=${r.candidates} checks=${r.checks} solutions=${r.solutions} ` +
         `minSolutionsWithOneRuleRemoved=${minWithout} (${Date.now() - t0}ms)`,
     );
   } catch (e) {

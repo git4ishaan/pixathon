@@ -78,7 +78,7 @@ export class EndScene extends Phaser.Scene {
       const report: ProofReport = verifyPuzzle(createPuzzle(this.seed));
       const weakest = Math.min(...report.necessity.map((n) => n.solutionsWithout));
       lines = [
-        `Seed ${report.seed}: checked ${report.candidates.toLocaleString()} six-digit codes.`,
+        `Seed ${report.seed}: checked ${report.checks} digit tests across ${report.candidates.toLocaleString()} possible codes.`,
         `Codes satisfying every clue: ${report.solutions} (${report.unique ? 'unique' : 'NOT unique'}).`,
         `Drop any one clue and at least ${weakest.toLocaleString()} codes remain (${report.allNecessary ? 'every clue needed' : 'a clue is redundant'}).`,
       ].join('\n');
