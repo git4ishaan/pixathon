@@ -7,6 +7,7 @@ import { CLUE_IDS } from '../game/types';
 import type { ChimeState, ClueId, ClueInstance, PatrolPoint, Puzzle } from '../game/types';
 import { Keypad } from '../keypad';
 import { addMuteToggle } from '../ui';
+import { Atmosphere, ChimeSprite, openLiftDoors } from './roomFx';
 
 const HEADER_HEIGHT = 64;
 const RAIL_X = 680;
@@ -40,9 +41,16 @@ interface SceneData {
 
 interface HotspotView {
   clue: ClueInstance;
+  /** The 120x132 click area. Doubles as the visible box when no prop art is loaded. */
   box: Phaser.GameObjects.Rectangle;
-  label: Phaser.GameObjects.Text;
+  prop?: Phaser.GameObjects.Image;
+  glow?: Phaser.GameObjects.Image;
+  /** Fallback caption, only when there is no prop art. */
+  label?: Phaser.GameObjects.Text;
   tag: Phaser.GameObjects.Text;
+  name: Phaser.GameObjects.Text;
+  tick: Phaser.GameObjects.Graphics;
+  mark: Phaser.GameObjects.Text;
 }
 
 const css = (color: number): string => `#${color.toString(16).padStart(6, '0')}`;
@@ -62,6 +70,8 @@ export class RoomScene extends Phaser.Scene {
   private popup?: Phaser.GameObjects.Container;
   private logPanel?: Phaser.GameObjects.Container;
   private keypad?: Keypad;
+  private chimeSprite?: ChimeSprite;
+  private atmosphere?: Atmosphere;
   private timerText!: Phaser.GameObjects.Text;
   private chimeText!: Phaser.GameObjects.Text;
   private chimePips: Phaser.GameObjects.Rectangle[] = [];
@@ -96,6 +106,8 @@ export class RoomScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(PALETTE.ink);
     this.drawLayout();
     this.drawHotspots();
+    this.chimeSprite = new ChimeSprite(this, this.chimeState.point);
+    this.atmosphere = new Atmosphere(this);
     this.drawEvidenceStrip();
     this.mountKeypad();
     addMuteToggle(this, GAME_WIDTH - 8, 6);
@@ -160,7 +172,11 @@ export class RoomScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(2);
 
     // Room view and control rail backdrops (Soham's background art replaces the room view).
-    this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x211b2e).setOrigin(0);
+    if (this.textures.exists('room-bg')) {
+      this.add.image(0, HEADER_HEIGHT, 'room-bg').setOrigin(0).setScale(4).setDepth(0);
+    } else {
+      this.add.rectangle(0, HEADER_HEIGHT, ROOM_W, GAME_HEIGHT - HEADER_HEIGHT, 0x211b2e).setOrigin(0);
+    }
     this.add.rectangle(RAIL_X, HEADER_HEIGHT, GAME_WIDTH - RAIL_X, GAME_HEIGHT - HEADER_HEIGHT, PALETTE.ink)
       .setOrigin(0)
       .setStrokeStyle(2, PALETTE.muted);
@@ -170,7 +186,7 @@ export class RoomScene extends Phaser.Scene {
       fontFamily: FONT,
       fontSize: '14px',
       padding: { x: 10, y: 5 },
-    }).setOrigin(0.5).setDepth(5).setAlpha(0);
+    }).setOrigin(0.5).setDepth(11).setAlpha(0);
   }
 
   private mountKeypad(): void {
@@ -184,28 +200,71 @@ export class RoomScene extends Phaser.Scene {
 
   private drawHotspots(): void {
     for (const clue of this.puzzle.clues) {
-      const box = this.add.rectangle(clue.x, clue.y, clue.width, clue.height, 0x2d2540)
-        .setStrokeStyle(2, PALETTE.muted)
+      const propKey = `prop-${clue.id}`;
+      const art = this.textures.exists(propKey);
+      const top = clue.y - clue.height / 2;
+      const box = this.add.rectangle(clue.x, clue.y, clue.width, clue.height, 0x2d2540, art ? 0 : 1)
+        .setDepth(2)
         .setInteractive({ useHandCursor: true });
-      const label = this.add.text(clue.x, clue.y, clue.label.toUpperCase(), {
-        color: css(PALETTE.paper),
-        fontFamily: FONT,
-        fontSize: '12px',
-        align: 'center',
-        wordWrap: { width: clue.width - 12 },
-      }).setOrigin(0.5);
+      let prop: Phaser.GameObjects.Image | undefined;
+      let glow: Phaser.GameObjects.Image | undefined;
+      let label: Phaser.GameObjects.Text | undefined;
+      if (art) {
+        prop = this.add.image(clue.x, clue.y, propKey).setScale(4).setDepth(1);
+        if (this.textures.exists(`${propKey}-glow`)) {
+          glow = this.add.image(clue.x, clue.y, `${propKey}-glow`).setScale(4).setDepth(1.5).setAlpha(0);
+        }
+      } else {
+        box.setStrokeStyle(2, PALETTE.muted);
+        label = this.add.text(clue.x, clue.y, clue.label.toUpperCase(), {
+          color: css(PALETTE.paper),
+          fontFamily: FONT,
+          fontSize: '12px',
+          align: 'center',
+          wordWrap: { width: clue.width - 12 },
+        }).setOrigin(0.5).setDepth(2);
+      }
       const tag = this.add.text(clue.x, clue.y + clue.height / 2 - 14, '', {
         color: css(PALETTE.danger),
         fontFamily: FONT,
         fontSize: '11px',
-      }).setOrigin(0.5);
+      }).setOrigin(0.5).setDepth(2);
+      const name = this.add.text(clue.x, top - 4, clue.label.toUpperCase(), {
+        color: css(PALETTE.paper),
+        backgroundColor: css(PALETTE.ink),
+        fontFamily: FONT,
+        fontSize: '11px',
+        padding: { x: 6, y: 3 },
+      }).setOrigin(0.5, 1).setDepth(8).setVisible(false);
+      const tick = this.add.graphics({ x: clue.x + clue.width / 2 - 12, y: top - 10 }).setDepth(9).setVisible(false);
+      tick.lineStyle(3, PALETTE.lamp, 1);
+      tick.beginPath();
+      tick.moveTo(-6, 0);
+      tick.lineTo(-2, 5);
+      tick.lineTo(6, -6);
+      tick.strokePath();
+      const mark = this.add.text(clue.x - clue.width / 2 + 12, top - 10, '?', {
+        color: css(PALETTE.lamp),
+        fontFamily: FONT,
+        fontSize: '16px',
+        fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(9).setVisible(false);
+
       box.on('pointerover', () => {
-        if (!this.isLocked(clue.id)) box.setStrokeStyle(2, PALETTE.lamp);
+        name.setVisible(true);
+        if (this.isLocked(clue.id)) return;
+        if (glow) glow.setAlpha(1);
+        else box.setStrokeStyle(2, PALETTE.lamp);
       });
-      box.on('pointerout', () => this.styleBox(clue.id));
+      box.on('pointerout', () => {
+        name.setVisible(false);
+        if (glow && !(clue.pulse && this.pulse)) glow.setAlpha(0);
+        this.styleBox(clue.id);
+      });
       box.on('pointerup', () => this.inspect(clue));
-      this.hotspots.set(clue.id, { clue, box, label, tag });
-      if (clue.pulse) this.startPulse(box);
+      const view: HotspotView = { clue, box, prop, glow, label, tag, name, tick, mark };
+      this.hotspots.set(clue.id, view);
+      if (clue.pulse) this.startPulse(view);
     }
   }
 
@@ -218,21 +277,36 @@ export class RoomScene extends Phaser.Scene {
     if (!view) return;
     const locked = this.isLocked(id);
     const found = this.found.has(id);
+    view.tick.setVisible(found);
+    view.mark.setVisible(found && view.clue.needs.some((n) => !this.found.has(n)));
+    view.tag.setText(locked ? 'CHIME IS HERE' : '');
+    if (view.prop) {
+      view.prop.setAlpha(locked ? 0.4 : 1);
+      if (locked) view.prop.setTint(0xaa6666);
+      else view.prop.clearTint();
+      view.box.setFillStyle(PALETTE.danger, locked ? 0.14 : 0);
+      if (locked) view.box.setStrokeStyle(2, PALETTE.danger);
+      else view.box.setStrokeStyle();
+      return;
+    }
     view.box.setFillStyle(found ? 0x4a3a2a : 0x2d2540);
     view.box.setStrokeStyle(2, locked ? PALETTE.danger : found ? PALETTE.lamp : PALETTE.muted);
     view.box.setAlpha(locked ? 0.35 : 1);
-    view.label.setAlpha(locked ? 0.35 : 1);
-    view.tag.setText(locked ? 'CHIME IS HERE' : '');
+    view.label?.setAlpha(locked ? 0.35 : 1);
   }
 
-  private startPulse(box: Phaser.GameObjects.Rectangle): void {
+  /** The first clue breathes: its glow sprite pulses, or the whole box when there is no glow art. */
+  private startPulse(view: HotspotView): void {
+    const target = view.glow ?? view.box;
     if (reducedMotion()) {
-      box.setStrokeStyle(4, PALETTE.lamp);
+      if (view.glow) view.glow.setAlpha(0.8);
+      else view.box.setStrokeStyle(4, PALETTE.lamp);
       return;
     }
+    if (view.glow) view.glow.setAlpha(0.15);
     this.pulse = this.tweens.add({
-      targets: box,
-      alpha: 0.55,
+      targets: target,
+      alpha: view.glow ? 1 : 0.55,
       duration: 700,
       yoyo: true,
       repeat: -1,
@@ -243,7 +317,11 @@ export class RoomScene extends Phaser.Scene {
     if (!this.pulse) return;
     this.pulse.stop();
     this.pulse = undefined;
-    for (const id of this.hotspots.keys()) this.styleBox(id);
+    for (const view of this.hotspots.values()) {
+      view.glow?.setAlpha(0);
+      view.box.setAlpha(1);
+      this.styleBox(view.clue.id);
+    }
   }
 
   private inspect(clue: ClueInstance): void {
@@ -253,31 +331,40 @@ export class RoomScene extends Phaser.Scene {
       return;
     }
     this.stopPulse();
+    keyClick(this);
+    this.nudge(clue.id);
     if (!this.found.has(clue.id)) {
       this.found.add(clue.id);
-      this.styleBox(clue.id);
       this.refreshEvidence();
     }
     this.showPopup(clue);
   }
 
+  /** A short hop on the prop when it is inspected. */
+  private nudge(id: ClueId): void {
+    const view = this.hotspots.get(id);
+    if (!view?.prop || reducedMotion()) return;
+    const targets = view.glow ? [view.prop, view.glow] : [view.prop];
+    this.tweens.add({ targets, y: view.clue.y - 6, duration: 70, yoyo: true });
+  }
+
   // ---------------------------------------------------------------- evidence
 
   private drawEvidenceStrip(): void {
-    this.add.rectangle(0, STRIP_Y - 6, ROOM_W, GAME_HEIGHT - STRIP_Y + 6, PALETTE.ink).setOrigin(0).setDepth(3);
-    this.add.rectangle(0, STRIP_Y - 6, ROOM_W, 2, PALETTE.muted).setOrigin(0).setDepth(3);
+    this.add.rectangle(0, STRIP_Y - 6, ROOM_W, GAME_HEIGHT - STRIP_Y + 6, PALETTE.ink).setOrigin(0).setDepth(5);
+    this.add.rectangle(0, STRIP_Y - 6, ROOM_W, 2, PALETTE.muted).setOrigin(0).setDepth(5);
     this.evidenceTitle = this.add.text(12, STRIP_Y, '', {
       color: css(PALETTE.lamp),
       fontFamily: FONT,
       fontSize: '12px',
-    }).setDepth(4);
+    }).setDepth(6);
     this.add.text(ROOM_W - 12, STRIP_Y, 'EVIDENCE LOG  [L]', {
       color: css(PALETTE.ink),
       backgroundColor: css(PALETTE.lamp),
       fontFamily: FONT,
       fontSize: '12px',
       padding: { x: 8, y: 4 },
-    }).setOrigin(1, 0).setDepth(4).setInteractive({ useHandCursor: true })
+    }).setOrigin(1, 0).setDepth(6).setInteractive({ useHandCursor: true })
       .on('pointerup', () => this.toggleLog());
     this.refreshEvidence();
   }
@@ -297,7 +384,7 @@ export class RoomScene extends Phaser.Scene {
         fontFamily: FONT,
         fontSize: '11px',
         padding: { x: 6, y: 3 },
-      }).setDepth(4).setInteractive({ useHandCursor: true });
+      }).setDepth(6).setInteractive({ useHandCursor: true });
       if (x + chip.width > ROOM_W - 12) {
         x = 12;
         y += 24;
@@ -307,6 +394,7 @@ export class RoomScene extends Phaser.Scene {
       chip.on('pointerup', () => this.showPopup(clue));
       this.chips.push(chip);
     }
+    for (const id of this.hotspots.keys()) this.styleBox(id);
   }
 
   private observationBlock(clue: ClueInstance): string {
@@ -411,6 +499,8 @@ export class RoomScene extends Phaser.Scene {
       return;
     }
     chimeBell(this);
+    this.chimeSprite?.moveTo(this.chimeState.point);
+    this.atmosphere?.setStage(this.chimeState.step);
     const moved = `Chime moves to the ${AREA_LABEL[this.chimeState.point].toLowerCase()}.`;
     this.showBanner(reason === 'wrong-code' ? `Wrong code. -10 seconds. ${moved}` : moved);
   }
@@ -460,7 +550,7 @@ export class RoomScene extends Phaser.Scene {
     const data = { outcome: outcome === 'win' ? 'win' : 'lose', seed: this.seed };
     if (outcome === 'win') {
       winJingle(this);
-      this.time.delayedCall(400, () => this.scene.start('EndScene', data));
+      openLiftDoors(this, () => this.scene.start('EndScene', data));
       return;
     }
     this.playJumpscare(() => this.scene.start('EndScene', data));

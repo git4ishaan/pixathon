@@ -122,3 +122,10 @@
 - Other fixes: the "Wrong code" banner was overwritten by the Chime banner in the same frame (now one message); SUBMIT with fewer than 6 digits did nothing (empty slots now flash red); keypad slot outline was clipped under the header bar; keys raised to 62 px; sfx wired for key click, wrong buzz, Chime bell, win and scare sting.
 - Test artifact, not a bug: typing six digits in one frame (puppeteer `keyboard.type` with no delay) garbles the code because Phaser queues key events per frame. Delay >= 20 ms is fine; a human cannot type that fast.
 - Not run: real phone, portrait layout, audible check of the sfx (headless).
+
+## Aarush: interactive room scene
+- Prompt: Turn the labeled hotspot boxes into an interactive scene: prop sprites with glow, name tag, found tick, inspect nudge, Chime walking between patrol spots, lamp flicker, dust, stage dimming and red vignette, lift doors opening on win. Code against texture keys with a box fallback because the art was not final.
+- Tool: Claude Code (Sonnet 5.5), headless Chrome screenshots against the Vite dev server.
+- Result: new `src/scenes/roomFx.ts` (ChimeSprite, Atmosphere, openLiftDoors) and a reworked hotspot layer in `RoomScene.ts`. Uses `room-bg`, `prop-<clueId>`, `prop-<clueId>-glow`, `chime-0/chime-1` or a single `chime`, and falls back to the old boxes and a brass rectangle when a texture is missing. Flicker fires about once a second and is off under reduced motion.
+- Mistake caught: my first patch script died on a shell quoting error and, on retry, on an exact-match anchor that another agent had already changed (the sfx import) because they merged into the shared branch at the same time; the assert refused to write, so nothing was half-applied. Screenshots then showed the hover name tag overlapping the Chime banner, fixed by raising the banner depth.
+- Not yet verified with real art, since the PNGs were not in the repo when this was written; Chime's lift-door and spot coordinates in `roomFx.ts` are estimates to retune against the final room-bg.
