@@ -1,5 +1,26 @@
-import { defineConfig } from 'vite';
+import { readdirSync } from 'node:fs';
+import { defineConfig, type Plugin } from 'vite';
+
+/** Exposes the file names in public/assets so BootScene only requests art that exists (no 404s). */
+function assetList(): Plugin {
+  const id = 'virtual:asset-list';
+  return {
+    name: 'asset-list',
+    resolveId: (source) => (source === id ? '\0' + id : null),
+    load: (source) => {
+      if (source !== '\0' + id) return null;
+      let files: string[] = [];
+      try {
+        files = readdirSync('public/assets');
+      } catch {
+        files = [];
+      }
+      return `export default ${JSON.stringify(files)};`;
+    },
+  };
+}
 
 export default defineConfig({
   base: './',
+  plugins: [assetList()],
 });
