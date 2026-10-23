@@ -9,7 +9,7 @@ export const ROOM_W = 680;
 export const ROOM_H = 476;
 
 /** Where the lift doors sit in the room. Matches the art once room-bg lands. */
-const LIFT_DOORS = { x: 628, y: 200, w: 76, h: 112 };
+const LIFT_DOORS = { x: 612, y: 315, w: 72, h: 96 };
 
 const WALK_MS = 1200;
 const BOB_MS = 220;
