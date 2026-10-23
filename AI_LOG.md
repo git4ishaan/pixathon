@@ -75,6 +75,12 @@
 - Mistake caught: The first validator draft imported `CHARSET` from rules.ts but the pruned validator defines its own candidates array, leaving `CHARSET` unused — a compile error under `noUnusedLocals`. Caught by `tsc --noEmit` and fixed by removing the stale import.
 - Branch `mitansh` pushed; PR: https://github.com/git4ishaan/pixathon/pull/new/mitansh
 
+## Bun installation and audio assets setup (branch: mitansh)
+- Prompt: Check if bun is installed, verify dependencies, create a folder for sound effects, and push to branch.
+- Tool: PowerShell, Bun v1.4.4, Antigravity file writer, and git.
+- Result: Installed Bun 1.4.4, verified dependencies and lockfile, verified `bun run typecheck` and `bun run validate` passing cleanly. Created `public/assets/audio/` with an asset specification guide and implemented `src/audio/sfx.ts` providing Web Audio synthetic effects (click, clue discovery chime, Chime patrol footstep, penalty error tone, radio static) with mute support.
+- Next: Update puzzle rules and clues for department-store deduction and multi-seed necessity checking in validate.ts.
+
 ## Asset Organization: PixelLab Sprite Ingestion
 - Prompt: Find every image file and prompt file from PixelLab sprite downloads, list with dimensions and categories, organize into public/assets/ (mascots, kids, props, unsorted) and docs/pixellab-prompts/, rename to lowercase with clear naming and animation/direction suffixes, print tree and unidentified files, and commit without altering src/.
 - Tool: Antigravity.

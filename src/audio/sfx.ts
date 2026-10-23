@@ -1,78 +1,150 @@
-import Phaser from 'phaser';
-
 /**
- * Web Audio sound effects, no audio files. Each function takes the calling scene so it can
- * share Phaser's (user-unlocked) AudioContext and respect the mute toggle from ui.ts.
+ * LAST LIFT — Sound Effects & Audio Manager
+ * Supports Web Audio synthetic sound generation (fallback / lightweight)
+ * and plays audio files loaded from public/assets/audio/
  */
 
-type Wave = OscillatorType;
+class SoundManager {
+  private ctx: AudioContext | null = null;
+  private muted: boolean = false;
 
-function context(scene: Phaser.Scene): AudioContext | null {
-  const sound = scene.sound;
-  if (sound.mute || !(sound instanceof Phaser.Sound.WebAudioSoundManager)) return null;
-  if (sound.context.state === 'suspended') void sound.context.resume();
-  return sound.context;
-}
+  private getContext(): AudioContext | null {
+    if (this.muted) return null;
+    if (!this.ctx && typeof window !== 'undefined') {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    return this.ctx;
+  }
 
-interface Tone {
-  freq: number;
-  /** Optional end frequency for a glide. */
-  to?: number;
-  start: number;
-  dur: number;
-  gain: number;
-  wave: Wave;
-}
+  public setMute(muted: boolean): void {
+    this.muted = muted;
+    if (this.ctx && muted) {
+      this.ctx.suspend().catch(() => {});
+    } else if (this.ctx && !muted) {
+      this.ctx.resume().catch(() => {});
+    }
+  }
 
-function play(scene: Phaser.Scene, tones: Tone[]): void {
-  const ctx = context(scene);
-  if (!ctx) return;
-  const t0 = ctx.currentTime;
-  for (const tone of tones) {
-    const osc = ctx.createOscillator();
-    const amp = ctx.createGain();
-    const begin = t0 + tone.start;
-    const end = begin + tone.dur;
-    osc.type = tone.wave;
-    osc.frequency.setValueAtTime(tone.freq, begin);
-    if (tone.to !== undefined) osc.frequency.exponentialRampToValueAtTime(tone.to, end);
-    amp.gain.setValueAtTime(0.0001, begin);
-    amp.gain.exponentialRampToValueAtTime(tone.gain, begin + 0.01);
-    amp.gain.exponentialRampToValueAtTime(0.0001, end);
-    osc.connect(amp).connect(ctx.destination);
-    osc.start(begin);
-    osc.stop(end + 0.02);
+  public isMuted(): boolean {
+    return this.muted;
+  }
+
+  /** Short UI blip/click for keypad and button presses */
+  public playClick(freq = 600, duration = 0.04): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch {
+      // Audio autoplay policy catch
+    }
+  }
+
+  /** Subtle discovery chime when a clue is inspected */
+  public playClueFound(): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      [523.25, 659.25, 783.99].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.25);
+      });
+    } catch {
+      // Ignore
+    }
+  }
+
+  /** Low mechanical thud / clockwork gear step */
+  public playChimeStep(): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(90, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch {
+      // Ignore
+    }
+  }
+
+  /** Low harsh error tone for wrong submissions */
+  public playError(): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(130, now);
+      osc.frequency.setValueAtTime(110, now + 0.1);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    } catch {
+      // Ignore
+    }
+  }
+
+  /** Radio white noise / static burst */
+  public playRadioStatic(duration = 0.5): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const bufferSize = ctx.sampleRate * duration;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      noise.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start();
+    } catch {
+      // Ignore
+    }
   }
 }
 
-export function keyClick(scene: Phaser.Scene): void {
-  play(scene, [{ freq: 880, start: 0, dur: 0.04, gain: 0.08, wave: 'square' }]);
-}
-
-export function wrongBuzz(scene: Phaser.Scene): void {
-  play(scene, [
-    { freq: 140, start: 0, dur: 0.18, gain: 0.12, wave: 'sawtooth' },
-    { freq: 110, start: 0.2, dur: 0.22, gain: 0.12, wave: 'sawtooth' },
-  ]);
-}
-
-/** Bellhop bell: Chime moving to the next patrol point. */
-export function chimeBell(scene: Phaser.Scene): void {
-  play(scene, [
-    { freq: 1568, start: 0, dur: 0.6, gain: 0.1, wave: 'sine' },
-    { freq: 2349, start: 0, dur: 0.4, gain: 0.05, wave: 'sine' },
-  ]);
-}
-
-export function winJingle(scene: Phaser.Scene): void {
-  const notes = [523, 659, 784, 1047];
-  play(scene, notes.map((freq, i) => ({ freq, start: i * 0.12, dur: i === 3 ? 0.5 : 0.15, gain: 0.1, wave: 'triangle' })));
-}
-
-/** Jumpscare sting. Single descending burst, under 1 second, no flashing rhythm. */
-export function scareSting(scene: Phaser.Scene): void {
-  play(scene, [
-    { freq: 900, to: 90, start: 0, dur: 0.8, gain: 0.18, wave: 'sawtooth' },
-    { freq: 450, to: 45, start: 0, dur: 0.8, gain: 0.14, wave: 'square' },
-  ]);
-}
+export const sfx = new SoundManager();
