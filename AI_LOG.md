@@ -41,3 +41,8 @@
 - Tool: Codex planning.
 - Result: Mitansh owns `src/game/rules.ts`, `src/data/clues.ts`, and `scripts/validate.ts`: implement the eight clue/rule data and prove the unique solution. Aarush owns `src/scenes/RoomScene.ts` and gameplay UI: wire clue discovery, keypad/live checklist, timer, win/lose, and restart using `ROOM_BLOCKOUT.md`; consume Mitansh's exports rather than duplicating puzzle logic. Ishaan continues separate room/prop sprites under `public/assets/` and supplies a filename/dimensions list for integration. Keep Tier 2 polish until Tier 1 works.
 - Coordination: Agree on clue IDs and exported data shape first. Mitansh can build the pure rules/validator independently; Aarush can block out the room with placeholders, then connect the exported clue/rule data. Integrate Ishaan's art after the click targets are stable.
+
+## Soham and Codex ownership
+- Prompt: Include the user and Codex in the work split.
+- Tool: Codex planning.
+- Result: Soham owns visual direction, creates/revises the room background from `ROOM_BLOCKOUT.md`, and gives final art/playability feedback. Codex owns integration support across the separate workstreams, code review, and build/validator checks; Codex does not create replacement room artwork.
